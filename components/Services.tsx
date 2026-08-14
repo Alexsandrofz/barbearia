@@ -1,77 +1,80 @@
 import Link from "next/link";
-import { Baby, Brush, Droplets, Scissors, Sparkles, Wind } from "lucide-react";
+import {
+  Baby,
+  Brush,
+  Droplets,
+  Scissors,
+  Sparkles,
+  Wind,
+} from "lucide-react";
 import SectionHeading from "./SectionHeading";
+import type { Service } from "@/lib/data";
 
-const services = [
-  {
-    icon: Scissors,
-    name: "Corte clássico",
-    price: "R$ 60",
-    time: "45 min",
-    desc: "Tesoura e máquina com acabamento na navalha e finalização a seu gosto.",
-  },
-  {
-    icon: Brush,
-    name: "Barba na navalha",
-    price: "R$ 45",
-    time: "30 min",
-    desc: "Toalha quente, óleos essenciais e desenho preciso do contorno.",
-  },
-  {
-    icon: Sparkles,
-    name: "Combo premium",
-    price: "R$ 95",
-    time: "1h15",
-    desc: "Corte, barba, sobrancelha e hidratação em uma única sessão.",
-  },
-  {
-    icon: Droplets,
-    name: "Hidratação capilar",
-    price: "R$ 55",
-    time: "30 min",
-    desc: "Tratamento profundo para devolver brilho, força e maciez.",
-  },
-  {
-    icon: Wind,
-    name: "Platinado / cor",
-    price: "R$ 180",
-    time: "2h",
-    desc: "Descoloração segura e matização feita por especialistas.",
-  },
-  {
-    icon: Baby,
-    name: "Corte infantil",
-    price: "R$ 45",
-    time: "30 min",
-    desc: "Atendimento paciente e divertido para os pequenos clientes.",
-  },
-];
+type Props = {
+  services: Service[];
+};
 
-export default function Services() {
+const icons = [Scissors, Brush, Sparkles, Droplets, Wind, Baby];
+
+function formatPrice(price: number) {
+  return new Intl.NumberFormat("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+  }).format(price);
+}
+
+export default function Services({ services }: Props) {
   return (
-    <section id="servicos" className="scroll-mt-20 py-20 sm:py-24 lg:py-32">
+    <section
+      id="servicos"
+      className="scroll-mt-20 py-20 sm:py-24 lg:py-32"
+    >
       <div className="section-shell">
         <SectionHeading
           eyebrow="Serviços"
           title="Cuidado sob medida para o seu estilo"
-          description="Preços transparentes, tempo estimado por serviço e produtos profissionais em todos os atendimentos."
+          description="Preços transparentes, duração estimada e atendimento profissional."
         />
 
-        <ul className="mt-10 grid grid-cols-1 gap-4 sm:mt-14 sm:grid-cols-2 sm:gap-5 lg:grid-cols-3">
-          {services.map((s) => (
-            <li key={s.name} className="card-premium p-6">
-              <s.icon className="h-7 w-7 text-gold" strokeWidth={1.5} aria-hidden />
-              <div className="mt-5 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-                <h3 className="text-lg font-semibold sm:text-xl">{s.name}</h3>
-                <span className="font-display text-lg text-gold">{s.price}</span>
-              </div>
-              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{s.desc}</p>
-              <p className="mt-4 text-xs uppercase tracking-widest text-muted-foreground">
-                {s.time}
-              </p>
-            </li>
-          ))}
-        </ul>
+        {services.length === 0 ? (
+          <p className="mt-10 text-muted-foreground">
+            Nenhum serviço disponível no momento.
+          </p>
+        ) : (
+          <ul className="mt-10 grid grid-cols-1 gap-4 sm:mt-14 sm:grid-cols-2 sm:gap-5 lg:grid-cols-3">
+            {services.map((service, index) => {
+              const Icon = icons[index % icons.length];
+
+              return (
+                <li key={service.id} className="card-premium p-6">
+                  <Icon
+                    className="h-7 w-7 text-gold"
+                    strokeWidth={1.5}
+                    aria-hidden
+                  />
+
+                  <div className="mt-5 flex flex-wrap items-baseline justify-between gap-3">
+                    <h3 className="text-lg font-semibold sm:text-xl">
+                      {service.name}
+                    </h3>
+
+                    <span className="font-display text-lg text-gold">
+                      {formatPrice(Number(service.price))}
+                    </span>
+                  </div>
+
+                  <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                    {service.description || "Serviço disponível para agendamento."}
+                  </p>
+
+                  <p className="mt-4 text-xs uppercase tracking-widest text-muted-foreground">
+                    {service.duration_minutes} minutos
+                  </p>
+                </li>
+              );
+            })}
+          </ul>
+        )}
 
         <div className="mt-10 flex justify-center sm:mt-12">
           <Link href="#contato" className="btn-gold w-full sm:w-auto">

@@ -3,35 +3,36 @@
 import { createClient } from "@/lib/supabase/client";
 
 export type AppointmentInput = {
+  businessId: string;
+  barberId: string;
+  serviceId: string;
+  serviceName: string;
   name: string;
   phone: string;
-  service: string;
+  appointmentDate: string;
+  startTime: string;
   notes?: string;
 };
 
-/**
- * Insere um pedido de agendamento na tabela `appointments`.
- * SQL sugerido (rode no seu Supabase):
- *
- * create table public.appointments (
- *   id uuid primary key default gen_random_uuid(),
- *   name text not null,
- *   phone text not null,
- *   service text not null,
- *   notes text,
- *   created_at timestamptz not null default now()
- * );
- * alter table public.appointments enable row level security;
- * create policy "anon can request appointment"
- *   on public.appointments for insert to anon, authenticated with check (true);
- */
+
 export async function createAppointment(input: AppointmentInput) {
   const supabase = createClient();
+
   const { error } = await supabase.from("appointments").insert({
+    business_id: input.businessId,
+    barber_id: input.barberId,
+    service_id: input.serviceId,
+
+    // A coluna antiga "service" ainda é obrigatória.
+    service: input.serviceName,
+
     name: input.name.trim(),
     phone: input.phone.trim(),
-    service: input.service,
+    appointment_date: input.appointmentDate,
+    start_time: input.startTime,
     notes: input.notes?.trim() || null,
+    status: "pending",
   });
+
   return { error };
 }
