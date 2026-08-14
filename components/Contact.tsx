@@ -1,13 +1,23 @@
 "use client";
 
-import { BOOKING_TIME_SLOTS } from "@/lib/time-slots";
-import { useEffect, useMemo, useState } from "react";
-import { Clock, Loader2, MapPin, Phone } from "lucide-react";
+import { useEffect, useState } from "react";
+import {
+  Clock,
+  Loader2,
+  MapPin,
+  Phone,
+} from "lucide-react";
 
 import SectionHeading from "./SectionHeading";
+
 import { createAppointment } from "@/lib/appointments";
-import { getBusyTimes } from "@/lib/availability";
-import type { Barber, Business, Service } from "@/lib/data";
+import { getAvailableTimes } from "@/lib/availability";
+
+import type {
+  Barber,
+  Business,
+  Service,
+} from "@/lib/data";
 
 type Props = {
   business: Business;
@@ -15,73 +25,204 @@ type Props = {
   services: Service[];
 };
 
-
-
 const inputClass =
   "mt-2 h-12 w-full rounded-lg border border-input bg-background px-4 text-base text-foreground outline-none transition-colors placeholder:text-muted-foreground/70 focus:border-gold disabled:cursor-not-allowed disabled:opacity-60";
+
+function getBrazilToday() {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Sao_Paulo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+}
 
 export default function Contact({
   business,
   barbers,
   services,
 }: Props) {
-  const [loading, setLoading] = useState(false);
-  const [loadingTimes, setLoadingTimes] = useState(false);
+  const [loading, setLoading] =
+    useState(false);
 
-  const [selectedBarberId, setSelectedBarberId] = useState("");
-  const [selectedDate, setSelectedDate] = useState("");
-  const [selectedTime, setSelectedTime] = useState("");
+  const [loadingTimes, setLoadingTimes] =
+    useState(false);
 
-  const [busyTimes, setBusyTimes] = useState<string[]>([]);
+  const [
+    selectedBarberId,
+    setSelectedBarberId,
+  ] = useState("");
 
-  const [status, setStatus] = useState<null | {
-    ok: boolean;
-    msg: string;
-  }>(null);
+  const [
+    selectedServiceId,
+    setSelectedServiceId,
+  ] = useState("");
 
-  const freeTimes = useMemo(() => {
-    return BOOKING_TIME_SLOTS.filter(
-      (time) => !busyTimes.some((busyTime) => busyTime.startsWith(time)),
-    );
-  }, [busyTimes]);
+  const [
+    selectedDate,
+    setSelectedDate,
+  ] = useState("");
 
+  const [
+    selectedTime,
+    setSelectedTime,
+  ] = useState("");
+
+  const [
+    availableTimes,
+    setAvailableTimes,
+  ] = useState<string[]>([]);
+
+  const [
+    availabilityMessage,
+    setAvailabilityMessage,
+  ] = useState("");
+
+  const [status, setStatus] =
+    useState<null | {
+      ok: boolean;
+      msg: string;
+    }>(null);
+
+  const today = getBrazilToday();
+
+  const selectedService =
+    services.find(
+      (service) =>
+        service.id === selectedServiceId,
+    ) ?? null;
+
+  /*
+   * Carrega os horários sempre que:
+   *
+   * - barbeiro muda;
+   * - serviço muda;
+   * - data muda.
+   *
+   * A duração do serviço é usada para
+   * verificar se ele cabe antes do próximo
+   * atendimento, intervalo ou fechamento.
+   */
   useEffect(() => {
-    async function loadBusyTimes() {
-      if (!selectedBarberId || !selectedDate) {
-        setBusyTimes([]);
+    let cancelled = false;
+
+    async function loadAvailableTimes() {
+      if (
+        !selectedBarberId ||
+        !selectedService ||
+        !selectedDate
+      ) {
+        setAvailableTimes([]);
         setSelectedTime("");
+        setAvailabilityMessage("");
         return;
       }
 
       setLoadingTimes(true);
       setSelectedTime("");
       setStatus(null);
+      setAvailabilityMessage("");
 
-      const times = await getBusyTimes(selectedBarberId, selectedDate);
+      const result =
+        await getAvailableTimes(
+          business.id,
+          selectedBarberId,
+          selectedDate,
+          selectedService.duration_minutes,
+        );
 
-      setBusyTimes(times);
+      if (cancelled) {
+        return;
+      }
+
+      setAvailableTimes(
+        result.availableTimes,
+      );
+
+      setAvailabilityMessage(
+        result.message ?? "",
+      );
+
       setLoadingTimes(false);
     }
 
-    loadBusyTimes();
-  }, [selectedBarberId, selectedDate]);
+    loadAvailableTimes();
 
-  async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    business.id,
+    selectedBarberId,
+    selectedService,
+    selectedDate,
+  ]);
+
+  async function refreshAvailableTimes() {
+    if (
+      !selectedBarberId ||
+      !selectedService ||
+      !selectedDate
+    ) {
+      return;
+    }
+
+    setLoadingTimes(true);
+
+    const result =
+      await getAvailableTimes(
+        business.id,
+        selectedBarberId,
+        selectedDate,
+        selectedService.duration_minutes,
+      );
+
+    setAvailableTimes(
+      result.availableTimes,
+    );
+
+    setAvailabilityMessage(
+      result.message ?? "",
+    );
+
+    setLoadingTimes(false);
+  }
+
+  async function onSubmit(
+    event: React.FormEvent<HTMLFormElement>,
+  ) {
     event.preventDefault();
 
     const form = event.currentTarget;
     const formData = new FormData(form);
 
-    const serviceId = String(formData.get("serviceId") ?? "");
-    const selectedService = services.find(
-      (service) => service.id === serviceId,
-    );
+    const name = String(
+      formData.get("name") ?? "",
+    ).trim();
 
-    if (!selectedService) {
+    const phone = String(
+      formData.get("phone") ?? "",
+    ).trim();
+
+    const notes = String(
+      formData.get("notes") ?? "",
+    ).trim();
+
+    if (!name) {
       setStatus({
         ok: false,
-        msg: "Selecione um serviço válido.",
+        msg: "Informe seu nome.",
       });
+
+      return;
+    }
+
+    if (!phone) {
+      setStatus({
+        ok: false,
+        msg: "Informe seu WhatsApp.",
+      });
+
       return;
     }
 
@@ -90,6 +231,16 @@ export default function Contact({
         ok: false,
         msg: "Selecione um barbeiro.",
       });
+
+      return;
+    }
+
+    if (!selectedService) {
+      setStatus({
+        ok: false,
+        msg: "Selecione um serviço válido.",
+      });
+
       return;
     }
 
@@ -98,6 +249,7 @@ export default function Contact({
         ok: false,
         msg: "Selecione uma data.",
       });
+
       return;
     }
 
@@ -106,32 +258,79 @@ export default function Contact({
         ok: false,
         msg: "Selecione um horário disponível.",
       });
+
+      return;
+    }
+
+    /*
+     * Segurança adicional no frontend:
+     * só envia um horário que continua
+     * presente na disponibilidade atual.
+     */
+    if (
+      !availableTimes.includes(
+        selectedTime,
+      )
+    ) {
+      setSelectedTime("");
+
+      setStatus({
+        ok: false,
+        msg: "Esse horário não está mais disponível. Escolha outro.",
+      });
+
+      await refreshAvailableTimes();
+
       return;
     }
 
     setLoading(true);
     setStatus(null);
 
-    const { error } = await createAppointment({
-      businessId: business.id,
-      barberId: selectedBarberId,
-      serviceId: selectedService.id,
-      serviceName: selectedService.name,
-      name: String(formData.get("name") ?? ""),
-      phone: String(formData.get("phone") ?? ""),
-      appointmentDate: selectedDate,
-      startTime: selectedTime,
-      notes: String(formData.get("notes") ?? ""),
-    });
+    const { error } =
+      await createAppointment({
+        businessId: business.id,
+        barberId: selectedBarberId,
+
+        serviceId:
+          selectedService.id,
+
+        serviceName:
+          selectedService.name,
+
+        name,
+        phone,
+
+        appointmentDate:
+          selectedDate,
+
+        startTime:
+          selectedTime,
+
+        notes,
+      });
 
     setLoading(false);
 
     if (error) {
-      console.error("Erro ao criar agendamento:", error);
+      console.error(
+        "Erro ao criar agendamento:",
+        error,
+      );
 
+      /*
+       * Conflito de horário.
+       *
+       * Recarregamos toda a disponibilidade
+       * em vez de apenas remover manualmente
+       * o horário selecionado, porque um
+       * atendimento mais longo pode bloquear
+       * mais de um slot.
+       */
       if (error.code === "23505") {
-        setBusyTimes((current) => [...current, `${selectedTime}:00`]);
         setSelectedTime("");
+
+        await refreshAvailableTimes();
 
         setStatus({
           ok: false,
@@ -155,11 +354,19 @@ export default function Contact({
     });
 
     form.reset();
+
     setSelectedBarberId("");
+    setSelectedServiceId("");
     setSelectedDate("");
     setSelectedTime("");
-    setBusyTimes([]);
+    setAvailableTimes([]);
+    setAvailabilityMessage("");
   }
+
+  const canChooseTime =
+    Boolean(selectedBarberId) &&
+    Boolean(selectedServiceId) &&
+    Boolean(selectedDate);
 
   return (
     <section
@@ -182,10 +389,13 @@ export default function Contact({
                 </span>
 
                 <div>
-                  <p className="font-semibold">Endereço</p>
+                  <p className="font-semibold">
+                    Endereço
+                  </p>
 
                   <p className="text-sm text-muted-foreground">
-                    {business.address || "Endereço não informado"}
+                    {business.address ||
+                      "Endereço não informado"}
                   </p>
                 </div>
               </li>
@@ -196,10 +406,13 @@ export default function Contact({
                 </span>
 
                 <div>
-                  <p className="font-semibold">Contato</p>
+                  <p className="font-semibold">
+                    Contato
+                  </p>
 
                   <p className="text-sm text-muted-foreground">
-                    {business.phone || "Telefone não informado"}
+                    {business.phone ||
+                      "Telefone não informado"}
                   </p>
 
                   {business.email && (
@@ -216,10 +429,15 @@ export default function Contact({
                 </span>
 
                 <div>
-                  <p className="font-semibold">Atendimento</p>
+                  <p className="font-semibold">
+                    Atendimento
+                  </p>
 
                   <p className="text-sm text-muted-foreground">
-                    Os horários ocupados são removidos automaticamente.
+                    Os horários são calculados
+                    automaticamente de acordo
+                    com o profissional e o
+                    serviço escolhido.
                   </p>
                 </div>
               </li>
@@ -230,6 +448,7 @@ export default function Contact({
             className="card-premium space-y-5 p-6 sm:p-8"
             onSubmit={onSubmit}
           >
+            {/* NOME */}
             <div>
               <label
                 htmlFor="name"
@@ -242,11 +461,13 @@ export default function Contact({
                 id="name"
                 name="name"
                 required
+                disabled={loading}
                 placeholder="Seu nome completo"
                 className={inputClass}
               />
             </div>
 
+            {/* WHATSAPP */}
             <div>
               <label
                 htmlFor="phone"
@@ -260,11 +481,13 @@ export default function Contact({
                 name="phone"
                 type="tel"
                 required
+                disabled={loading}
                 placeholder="(79) 99999-9999"
                 className={inputClass}
               />
             </div>
 
+            {/* BARBEIRO */}
             <div>
               <label
                 htmlFor="barberId"
@@ -278,9 +501,15 @@ export default function Contact({
                 name="barberId"
                 required
                 value={selectedBarberId}
+                disabled={loading}
                 onChange={(event) => {
-                  setSelectedBarberId(event.target.value);
+                  setSelectedBarberId(
+                    event.target.value,
+                  );
+
                   setSelectedTime("");
+                  setAvailableTimes([]);
+                  setAvailabilityMessage("");
                 }}
                 className={inputClass}
               >
@@ -288,14 +517,20 @@ export default function Contact({
                   Selecione um barbeiro
                 </option>
 
-                {barbers.map((barber) => (
-                  <option key={barber.id} value={barber.id}>
-                    {barber.name}
-                  </option>
-                ))}
+                {barbers.map(
+                  (barber) => (
+                    <option
+                      key={barber.id}
+                      value={barber.id}
+                    >
+                      {barber.name}
+                    </option>
+                  ),
+                )}
               </select>
             </div>
 
+            {/* SERVIÇO */}
             <div>
               <label
                 htmlFor="serviceId"
@@ -308,21 +543,53 @@ export default function Contact({
                 id="serviceId"
                 name="serviceId"
                 required
-                defaultValue=""
+                value={selectedServiceId}
+                disabled={loading}
+                onChange={(event) => {
+                  setSelectedServiceId(
+                    event.target.value,
+                  );
+
+                  setSelectedTime("");
+                  setAvailableTimes([]);
+                  setAvailabilityMessage("");
+                }}
                 className={inputClass}
               >
                 <option value="" disabled>
                   Selecione um serviço
                 </option>
 
-                {services.map((service) => (
-                  <option key={service.id} value={service.id}>
-                    {service.name} — {service.duration_minutes} min
-                  </option>
-                ))}
+                {services.map(
+                  (service) => (
+                    <option
+                      key={service.id}
+                      value={service.id}
+                    >
+                      {service.name} —{" "}
+                      {
+                        service.duration_minutes
+                      }{" "}
+                      min
+                    </option>
+                  ),
+                )}
               </select>
+
+              {selectedService && (
+                <p className="mt-2 text-xs text-muted-foreground">
+                  Duração estimada:{" "}
+                  <span className="font-semibold text-foreground">
+                    {
+                      selectedService.duration_minutes
+                    }{" "}
+                    minutos
+                  </span>
+                </p>
+              )}
             </div>
 
+            {/* DATA + HORÁRIO */}
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
                 <label
@@ -337,10 +604,17 @@ export default function Contact({
                   name="appointmentDate"
                   type="date"
                   required
+                  min={today}
                   value={selectedDate}
+                  disabled={loading}
                   onChange={(event) => {
-                    setSelectedDate(event.target.value);
+                    setSelectedDate(
+                      event.target.value,
+                    );
+
                     setSelectedTime("");
+                    setAvailableTimes([]);
+                    setAvailabilityMessage("");
                   }}
                   className={inputClass}
                 />
@@ -359,43 +633,84 @@ export default function Contact({
                   name="startTime"
                   required
                   value={selectedTime}
-                  onChange={(event) => setSelectedTime(event.target.value)}
+                  onChange={(event) =>
+                    setSelectedTime(
+                      event.target.value,
+                    )
+                  }
                   disabled={
-                    !selectedBarberId ||
-                    !selectedDate ||
+                    loading ||
+                    !canChooseTime ||
                     loadingTimes ||
-                    freeTimes.length === 0
+                    availableTimes.length ===
+                      0
                   }
                   className={inputClass}
                 >
-                  <option value="" disabled>
+                  <option
+                    value=""
+                    disabled
+                  >
                     {loadingTimes
                       ? "Carregando..."
-                      : !selectedBarberId || !selectedDate
-                        ? "Escolha barbeiro e data"
-                        : freeTimes.length === 0
-                          ? "Sem horários disponíveis"
-                          : "Selecione um horário"}
+                      : !selectedBarberId
+                        ? "Escolha o barbeiro"
+                        : !selectedServiceId
+                          ? "Escolha o serviço"
+                          : !selectedDate
+                            ? "Escolha a data"
+                            : availableTimes.length ===
+                                0
+                              ? "Sem horários disponíveis"
+                              : "Selecione um horário"}
                   </option>
 
-                  {freeTimes.map((time) => (
-                    <option key={time} value={time}>
-                      {time}
-                    </option>
-                  ))}
+                  {availableTimes.map(
+                    (time) => (
+                      <option
+                        key={time}
+                        value={time}
+                      >
+                        {time}
+                      </option>
+                    ),
+                  )}
                 </select>
               </div>
             </div>
 
-            {selectedBarberId &&
-              selectedDate &&
-              !loadingTimes &&
-              freeTimes.length > 0 && (
+            {/* INFORMAÇÃO DA DISPONIBILIDADE */}
+            {loadingTimes && (
+              <p className="flex items-center gap-2 text-xs text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin text-gold" />
+
+                Consultando disponibilidade...
+              </p>
+            )}
+
+            {!loadingTimes &&
+              canChooseTime &&
+              availableTimes.length >
+                0 && (
                 <p className="text-xs text-muted-foreground">
-                  {freeTimes.length} horário(s) disponível(is) nesta data.
+                  {
+                    availableTimes.length
+                  }{" "}
+                  horário(s)
+                  disponível(is) para este
+                  profissional.
                 </p>
               )}
 
+            {!loadingTimes &&
+              canChooseTime &&
+              availabilityMessage && (
+                <p className="text-sm text-destructive">
+                  {availabilityMessage}
+                </p>
+              )}
+
+            {/* OBSERVAÇÕES */}
             <div>
               <label
                 htmlFor="notes"
@@ -408,32 +723,44 @@ export default function Contact({
                 id="notes"
                 name="notes"
                 rows={4}
+                disabled={loading}
                 placeholder="Alguma preferência ou informação adicional?"
-                className="mt-2 w-full rounded-lg border border-input bg-background p-4 text-base text-foreground outline-none transition-colors placeholder:text-muted-foreground/70 focus:border-gold"
+                className="mt-2 w-full rounded-lg border border-input bg-background p-4 text-base text-foreground outline-none transition-colors placeholder:text-muted-foreground/70 focus:border-gold disabled:cursor-not-allowed disabled:opacity-60"
               />
             </div>
 
+            {/* BOTÃO */}
             <button
               type="submit"
               disabled={
                 loading ||
                 loadingTimes ||
+                !selectedBarberId ||
+                !selectedServiceId ||
+                !selectedDate ||
+                !selectedTime ||
                 barbers.length === 0 ||
-                services.length === 0 ||
-                freeTimes.length === 0
+                services.length === 0
               }
               className="btn-gold w-full disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {loading && <Loader2 className="h-5 w-5 animate-spin" />}
+              {loading && (
+                <Loader2 className="h-5 w-5 animate-spin" />
+              )}
 
-              {loading ? "Agendando..." : "Confirmar agendamento"}
+              {loading
+                ? "Agendando..."
+                : "Confirmar agendamento"}
             </button>
 
+            {/* RESULTADO */}
             {status && (
               <p
                 role="status"
                 className={`text-sm ${
-                  status.ok ? "text-gold" : "text-destructive"
+                  status.ok
+                    ? "text-gold"
+                    : "text-destructive"
                 }`}
               >
                 {status.msg}

@@ -146,15 +146,10 @@ async function DashboardContent({ selectedDate }: { selectedDate: string }) {
 
     getBusinessHours(business.id),
   ]);
-  const selectedWeekday = new Date(
-  `${selectedDate}T12:00:00Z`,
-).getUTCDay();
+  const selectedWeekday = new Date(`${selectedDate}T12:00:00Z`).getUTCDay();
 
   const businessHour =
-  businessHours.find(
-    (hour) =>
-      hour.weekday === selectedWeekday,
-  ) ?? null;
+    businessHours.find((hour) => hour.weekday === selectedWeekday) ?? null;
 
   const barbers = allBarbers
     .filter((barber) => barber.active)
