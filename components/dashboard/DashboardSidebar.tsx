@@ -18,57 +18,86 @@ import {
 
 import { createClient } from "@/lib/supabase/client";
 
-const navigation = [
+type UserRole =
+  | "owner"
+  | "manager"
+  | "barber"
+  | "customer"
+  | "unauthorized";
+
+type NavigationItem = {
+  label: string;
+  href: string;
+  icon: React.ComponentType<{
+    className?: string;
+  }>;
+  roles: UserRole[];
+};
+
+const navigation: NavigationItem[] = [
   {
     label: "Agenda",
     href: "/dashboard",
     icon: CalendarDays,
-    available: true,
+    roles: ["owner", "manager"],
   },
   {
     label: "Clientes",
     href: "/dashboard/clientes",
     icon: UsersRound,
-    available: true,
+    roles: ["owner", "manager"],
   },
   {
     label: "Barbeiros",
     href: "/dashboard/barbeiros",
     icon: UserRound,
-    available: true,
+    roles: ["owner", "manager"],
   },
   {
     label: "Serviços",
     href: "/dashboard/servicos",
     icon: Scissors,
-    available: true,
+    roles: ["owner", "manager"],
   },
   {
     label: "Financeiro",
     href: "/dashboard/financeiro",
     icon: ChartNoAxesCombined,
-    available: true,
+    roles: ["owner"],
   },
   {
     label: "Configurações",
     href: "/dashboard/configuracoes/horarios",
     icon: Settings,
-    available: true,
+    roles: ["owner", "manager"],
+  },
+  {
+    label: "Minha agenda",
+    href: "/dashboard/barbeiro",
+    icon: CalendarDays,
+    roles: ["barber"],
   },
 ];
 
 type Props = {
   businessName?: string;
+  role: UserRole;
 };
 
 export default function DashboardSidebar({
   businessName = "Minha barbearia",
+  role,
 }: Props) {
   const pathname = usePathname();
   const router = useRouter();
 
-  const [mobileOpen, setMobileOpen] = useState(false);
-  const [isLoggingOut, startLogoutTransition] = useTransition();
+  const [mobileOpen, setMobileOpen] =
+    useState(false);
+
+  const [
+    isLoggingOut,
+    startLogoutTransition,
+  ] = useTransition();
 
   function closeMobileMenu() {
     setMobileOpen(false);
@@ -78,12 +107,17 @@ export default function DashboardSidebar({
     startLogoutTransition(async () => {
       const supabase = createClient();
 
-      const { error } = await supabase.auth.signOut({
-        scope: "local",
-      });
+      const { error } =
+        await supabase.auth.signOut({
+          scope: "local",
+        });
 
       if (error) {
-        console.error("Erro ao sair:", error);
+        console.error(
+          "Erro ao sair:",
+          error,
+        );
+
         return;
       }
 
@@ -92,11 +126,21 @@ export default function DashboardSidebar({
     });
   }
 
+  const visibleNavigation =
+    navigation.filter((item) =>
+      item.roles.includes(role),
+    );
+
+  const homeHref =
+    role === "barber"
+      ? "/dashboard/barbeiro"
+      : "/dashboard";
+
   const sidebarContent = (
     <>
       <div className="flex h-20 items-center justify-between border-b border-border px-5">
         <Link
-          href="/dashboard"
+          href={homeHref}
           onClick={closeMobileMenu}
           className="flex min-w-0 items-center gap-3"
         >
@@ -106,7 +150,9 @@ export default function DashboardSidebar({
 
           <span className="min-w-0">
             <span className="block text-xs uppercase tracking-[0.18em] text-muted-foreground">
-              Painel
+              {role === "barber"
+                ? "Área do profissional"
+                : "Painel"}
             </span>
 
             <span className="block truncate font-display text-lg">
@@ -130,53 +176,44 @@ export default function DashboardSidebar({
         className="flex-1 overflow-y-auto px-3 py-6"
       >
         <p className="mb-3 px-3 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-          Gerenciamento
+          {role === "barber"
+            ? "Profissional"
+            : "Gerenciamento"}
         </p>
 
         <ul className="space-y-1">
-          {navigation.map((item) => {
-            const Icon = item.icon;
+          {visibleNavigation.map(
+            (item) => {
+              const Icon = item.icon;
 
-            const active =
-              item.href === "/dashboard"
-                ? pathname === "/dashboard"
-                : pathname.startsWith(item.href);
+              const active =
+                item.href === "/dashboard"
+                  ? pathname === "/dashboard"
+                  : pathname.startsWith(
+                      item.href,
+                    );
 
-            if (!item.available) {
               return (
                 <li key={item.href}>
-                  <div className="flex min-h-12 cursor-not-allowed items-center gap-3 rounded-xl px-3 text-muted-foreground/55">
+                  <Link
+                    href={item.href}
+                    onClick={
+                      closeMobileMenu
+                    }
+                    className={`flex min-h-12 items-center gap-3 rounded-xl px-3 text-sm font-medium transition-colors ${
+                      active
+                        ? "bg-gold/12 text-gold"
+                        : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+                    }`}
+                  >
                     <Icon className="h-5 w-5 shrink-0" />
 
-                    <span className="flex-1 text-sm font-medium">
-                      {item.label}
-                    </span>
-
-                    <span className="rounded-full border border-border px-2 py-0.5 text-[10px] uppercase tracking-wide">
-                      Em breve
-                    </span>
-                  </div>
+                    {item.label}
+                  </Link>
                 </li>
               );
-            }
-
-            return (
-              <li key={item.href}>
-                <Link
-                  href={item.href}
-                  onClick={closeMobileMenu}
-                  className={`flex min-h-12 items-center gap-3 rounded-xl px-3 text-sm font-medium transition-colors ${
-                    active
-                      ? "bg-gold/12 text-gold"
-                      : "text-muted-foreground hover:bg-secondary hover:text-foreground"
-                  }`}
-                >
-                  <Icon className="h-5 w-5 shrink-0" />
-                  {item.label}
-                </Link>
-              </li>
-            );
-          })}
+            },
+          )}
         </ul>
       </nav>
 
@@ -187,6 +224,7 @@ export default function DashboardSidebar({
           className="flex min-h-11 items-center gap-3 rounded-xl px-3 text-sm text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
         >
           <Store className="h-5 w-5" />
+
           Ver site público
         </Link>
 
@@ -197,7 +235,10 @@ export default function DashboardSidebar({
           className="mt-1 flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-sm text-red-300 transition-colors hover:bg-red-500/10 disabled:cursor-not-allowed disabled:opacity-60"
         >
           <LogOut className="h-5 w-5" />
-          {isLoggingOut ? "Saindo..." : "Sair"}
+
+          {isLoggingOut
+            ? "Saindo..."
+            : "Sair"}
         </button>
       </div>
     </>
@@ -218,7 +259,9 @@ export default function DashboardSidebar({
 
         <button
           type="button"
-          onClick={() => setMobileOpen(true)}
+          onClick={() =>
+            setMobileOpen(true)
+          }
           aria-label="Abrir menu"
           aria-expanded={mobileOpen}
           className="grid h-11 w-11 place-items-center rounded-full border border-border"
