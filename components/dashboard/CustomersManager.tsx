@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState } from "react";
 import {
   CalendarClock,
@@ -217,9 +218,11 @@ export default function CustomersManager({
         ) : (
           <div className="mt-6 grid grid-cols-1 gap-5 xl:grid-cols-2">
             {filteredCustomers.map((customer) => (
-              <article
+              <Link
                 key={customer.id}
-                className="card-premium p-5 sm:p-6"
+                href={`/dashboard/clientes/${customer.id}`}
+                className="card-premium block p-5 transition-all hover:-translate-y-0.5 hover:border-gold/40 sm:p-6"
+
               >
                 <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
                   <div className="flex min-w-0 items-start gap-4">
@@ -366,7 +369,7 @@ export default function CustomersManager({
                     </div>
                   </div>
                 </div>
-              </article>
+              </Link>
             ))}
           </div>
         )}
