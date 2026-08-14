@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import {
   CalendarDays,
   ChartNoAxesCombined,
+  ClipboardList,
   LogOut,
   Menu,
   Scissors,
@@ -32,14 +33,19 @@ type NavigationItem = {
     className?: string;
   }>;
   roles: UserRole[];
+  exact?: boolean;
 };
 
 const navigation: NavigationItem[] = [
+  /*
+   * DONO / GERENTE
+   */
   {
     label: "Agenda",
     href: "/dashboard",
     icon: CalendarDays,
     roles: ["owner", "manager"],
+    exact: true,
   },
   {
     label: "Clientes",
@@ -71,10 +77,27 @@ const navigation: NavigationItem[] = [
     icon: Settings,
     roles: ["owner", "manager"],
   },
+
+  /*
+   * BARBEIRO
+   */
   {
     label: "Minha agenda",
     href: "/dashboard/barbeiro",
     icon: CalendarDays,
+    roles: ["barber"],
+    exact: true,
+  },
+  {
+    label: "Meus atendimentos",
+    href: "/dashboard/barbeiro/atendimentos",
+    icon: ClipboardList,
+    roles: ["barber"],
+  },
+  {
+    label: "Meu perfil",
+    href: "/dashboard/barbeiro/perfil",
+    icon: UserRound,
     roles: ["barber"],
   },
 ];
@@ -136,8 +159,21 @@ export default function DashboardSidebar({
       ? "/dashboard/barbeiro"
       : "/dashboard";
 
+  function isItemActive(
+    item: NavigationItem,
+  ) {
+    if (item.exact) {
+      return pathname === item.href;
+    }
+
+    return pathname.startsWith(
+      item.href,
+    );
+  }
+
   const sidebarContent = (
     <>
+      {/* TOPO */}
       <div className="flex h-20 items-center justify-between border-b border-border px-5">
         <Link
           href={homeHref}
@@ -171,8 +207,13 @@ export default function DashboardSidebar({
         </button>
       </div>
 
+      {/* NAVEGAÇÃO */}
       <nav
-        aria-label="Navegação administrativa"
+        aria-label={
+          role === "barber"
+            ? "Navegação do profissional"
+            : "Navegação administrativa"
+        }
         className="flex-1 overflow-y-auto px-3 py-6"
       >
         <p className="mb-3 px-3 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
@@ -187,11 +228,7 @@ export default function DashboardSidebar({
               const Icon = item.icon;
 
               const active =
-                item.href === "/dashboard"
-                  ? pathname === "/dashboard"
-                  : pathname.startsWith(
-                      item.href,
-                    );
+                isItemActive(item);
 
               return (
                 <li key={item.href}>
@@ -217,6 +254,7 @@ export default function DashboardSidebar({
         </ul>
       </nav>
 
+      {/* RODAPÉ */}
       <div className="border-t border-border p-3">
         <Link
           href="/"
@@ -246,6 +284,7 @@ export default function DashboardSidebar({
 
   return (
     <>
+      {/* CABEÇALHO MOBILE */}
       <header className="sticky top-0 z-40 flex h-16 items-center justify-between border-b border-border bg-background/95 px-5 backdrop-blur lg:hidden">
         <div className="flex min-w-0 items-center gap-3">
           <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-gold/30 text-gold">
@@ -270,10 +309,12 @@ export default function DashboardSidebar({
         </button>
       </header>
 
+      {/* SIDEBAR DESKTOP */}
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-72 flex-col border-r border-border bg-surface lg:flex">
         {sidebarContent}
       </aside>
 
+      {/* SIDEBAR MOBILE */}
       {mobileOpen && (
         <div className="fixed inset-0 z-50 lg:hidden">
           <button

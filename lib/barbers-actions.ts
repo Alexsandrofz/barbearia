@@ -4,10 +4,7 @@ import { revalidatePath } from "next/cache";
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
-import type {
-  BarberActionResult,
-  BarberInput,
-} from "@/lib/barbers-types";
+import type { BarberActionResult, BarberInput } from "@/lib/barbers-types";
 
 function validateBarber(input: BarberInput) {
   if (!input.name.trim()) {
@@ -45,11 +42,7 @@ async function getManagementAccess(businessId: string) {
     .eq("active", true)
     .single();
 
-  if (
-    error ||
-    !membership ||
-    !["owner", "manager"].includes(membership.role)
-  ) {
+  if (error || !membership || !["owner", "manager"].includes(membership.role)) {
     return {
       supabase,
       allowed: false,
@@ -105,9 +98,7 @@ export async function saveBarber(
 
     error = result.error;
   } else {
-    const result = await access.supabase
-      .from("barbers")
-      .insert(payload);
+    const result = await access.supabase.from("barbers").insert(payload);
 
     error = result.error;
   }
@@ -191,10 +182,7 @@ export async function createBarberAccess(
   businessId: string,
   input: CreateBarberAccessInput,
 ): Promise<BarberActionResult> {
-  const access =
-    await getManagementAccess(
-      businessId,
-    );
+  const access = await getManagementAccess(businessId);
 
   if (!access.allowed) {
     return {
@@ -203,25 +191,21 @@ export async function createBarberAccess(
     };
   }
 
-  const email =
-    input.email.trim().toLowerCase();
+  const email = input.email.trim().toLowerCase();
 
-  const password =
-    input.password.trim();
+  const password = input.password.trim();
 
   if (!email) {
     return {
       success: false,
-      message:
-        "Informe o e-mail do barbeiro.",
+      message: "Informe o e-mail do barbeiro.",
     };
   }
 
   if (password.length < 6) {
     return {
       success: false,
-      message:
-        "A senha deve possuir pelo menos 6 caracteres.",
+      message: "A senha deve possuir pelo menos 6 caracteres.",
     };
   }
 
@@ -229,58 +213,47 @@ export async function createBarberAccess(
    * Confirma que o barbeiro realmente
    * pertence à barbearia.
    */
-  const {
-    data: barber,
-    error: barberError,
-  } = await access.supabase
+  const { data: barber, error: barberError } = await access.supabase
     .from("barbers")
-    .select(`
+    .select(
+      `
       id,
       name,
       user_id,
       active
-    `)
+    `,
+    )
     .eq("id", input.barberId)
     .eq("business_id", businessId)
     .maybeSingle();
 
-  if (
-    barberError ||
-    !barber
-  ) {
+  if (barberError || !barber) {
     return {
       success: false,
-      message:
-        "Barbeiro não encontrado.",
+      message: "Barbeiro não encontrado.",
     };
   }
 
   if (!barber.active) {
     return {
       success: false,
-      message:
-        "Ative o barbeiro antes de criar o acesso.",
+      message: "Ative o barbeiro antes de criar o acesso.",
     };
   }
 
   if (barber.user_id) {
     return {
       success: false,
-      message:
-        "Este barbeiro já possui acesso ao sistema.",
+      message: "Este barbeiro já possui acesso ao sistema.",
     };
   }
 
-  const admin =
-    createAdminClient();
+  const admin = createAdminClient();
 
   /*
    * Cria a conta no Supabase Auth.
    */
-  const {
-    data: authData,
-    error: authError,
-  } =
+  const { data: authData, error: authError } =
     await admin.auth.admin.createUser({
       email,
       password,
@@ -298,35 +271,23 @@ export async function createBarberAccess(
       },
     });
 
-  if (
-    authError ||
-    !authData.user
-  ) {
-    console.error(
-      "Erro ao criar usuário do barbeiro:",
-      authError,
-    );
+  if (authError || !authData.user) {
+    console.error("Erro ao criar usuário do barbeiro:", authError);
 
     return {
       success: false,
-      message:
-        authError?.message?.includes(
-          "already",
-        )
-          ? "Já existe uma conta cadastrada com este e-mail."
-          : "Não foi possível criar o acesso do barbeiro.",
+      message: authError?.message?.includes("already")
+        ? "Já existe uma conta cadastrada com este e-mail."
+        : "Não foi possível criar o acesso do barbeiro.",
     };
   }
 
-  const userId =
-    authData.user.id;
+  const userId = authData.user.id;
 
   /*
    * Vincula o usuário Auth ao barbeiro.
    */
-  const {
-    error: barberUpdateError,
-  } = await access.supabase
+  const { error: barberUpdateError } = await admin
     .from("barbers")
     .update({
       user_id: userId,
@@ -335,18 +296,13 @@ export async function createBarberAccess(
     .eq("business_id", businessId);
 
   if (barberUpdateError) {
-    console.error(
-      "Erro ao vincular usuário ao barbeiro:",
-      barberUpdateError,
-    );
+    console.error("Erro ao vincular usuário ao barbeiro:", barberUpdateError);
 
     /*
      * Evita deixar uma conta órfã
      * no Auth caso o vínculo falhe.
      */
-    await admin.auth.admin.deleteUser(
-      userId,
-    );
+    await admin.auth.admin.deleteUser(userId);
 
     return {
       success: false,
@@ -358,9 +314,7 @@ export async function createBarberAccess(
   /*
    * Cria o vínculo de acesso à barbearia.
    */
-  const {
-    error: membershipError,
-  } = await access.supabase
+  const { error: membershipError } = await admin
     .from("business_members")
     .insert({
       business_id: businessId,
@@ -370,12 +324,9 @@ export async function createBarberAccess(
     });
 
   if (membershipError) {
-    console.error(
-      "Erro ao criar vínculo do barbeiro:",
-      membershipError,
-    );
+    console.error("Erro ao criar vínculo do barbeiro:", membershipError);
 
-    await access.supabase
+    await admin
       .from("barbers")
       .update({
         user_id: null,
@@ -383,28 +334,20 @@ export async function createBarberAccess(
       .eq("id", barber.id)
       .eq("business_id", businessId);
 
-    await admin.auth.admin.deleteUser(
-      userId,
-    );
+    await admin.auth.admin.deleteUser(userId);
 
     return {
       success: false,
-      message:
-        "Não foi possível liberar o acesso do barbeiro.",
+      message: "Não foi possível liberar o acesso do barbeiro.",
     };
   }
 
-  revalidatePath(
-    "/dashboard/barbeiros",
-  );
+  revalidatePath("/dashboard/barbeiros");
 
-  revalidatePath(
-    "/dashboard/barbeiro",
-  );
+  revalidatePath("/dashboard/barbeiro");
 
   return {
     success: true,
-    message:
-      "Acesso do barbeiro criado com sucesso.",
+    message: "Acesso do barbeiro criado com sucesso.",
   };
 }

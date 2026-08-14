@@ -18,7 +18,7 @@ async function FinanceContent() {
   }
 
   if (!access.businessId) {
-    redirect("/dashboard");
+    redirect("/acesso");
   }
 
   const summary = await getFinanceSummary(access.businessId);
