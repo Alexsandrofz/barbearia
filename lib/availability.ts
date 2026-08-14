@@ -3,14 +3,7 @@ import { createClient } from "@/lib/supabase/client";
 type BusyAppointment = {
   start_time: string;
   status: string;
-  selected_service:
-    | {
-        duration_minutes: number;
-      }
-    | {
-        duration_minutes: number;
-      }[]
-    | null;
+  duration_minutes: number;
 };
 
 type BusinessHour = {
@@ -28,18 +21,6 @@ export type AvailableTimesResult = {
   isOpen: boolean;
   message?: string;
 };
-
-function getRelation<T>(
-  relation: T | T[] | null,
-): T | null {
-  if (!relation) {
-    return null;
-  }
-
-  return Array.isArray(relation)
-    ? (relation[0] ?? null)
-    : relation;
-}
 
 function timeToMinutes(time: string) {
   const [hours, minutes] = time
@@ -111,7 +92,13 @@ export async function getAvailableTimes(
 
   const weekday = getWeekday(date);
 
-  const { data: hourData, error: hourError } = await supabase
+  /*
+   * 1. Busca o horário de funcionamento.
+   */
+  const {
+    data: hourData,
+    error: hourError,
+  } = await supabase
     .from("business_hours")
     .select(`
       weekday,
@@ -139,7 +126,8 @@ export async function getAvailableTimes(
     };
   }
 
-  const businessHour = hourData as BusinessHour | null;
+  const businessHour =
+    hourData as BusinessHour | null;
 
   if (
     !businessHour ||
@@ -154,19 +142,22 @@ export async function getAvailableTimes(
     };
   }
 
-  const { data: appointmentData, error: appointmentError } =
-    await supabase
-      .from("appointments")
-      .select(`
-        start_time,
-        status,
-        selected_service:services (
-          duration_minutes
-        )
-      `)
-      .eq("barber_id", barberId)
-      .eq("appointment_date", date)
-      .in("status", ["pending", "confirmed"]);
+  /*
+   * 2. Busca somente os horários ocupados.
+   *
+   * Não acessamos mais appointments diretamente
+   * no navegador.
+   */
+  const {
+    data: appointmentData,
+    error: appointmentError,
+  } = await supabase.rpc(
+    "get_busy_appointments",
+    {
+      p_barber_id: barberId,
+      p_date: date,
+    },
+  );
 
   if (appointmentError) {
     console.error(
@@ -177,13 +168,17 @@ export async function getAvailableTimes(
     return {
       availableTimes: [],
       isOpen: true,
-      message: "Não foi possível carregar a disponibilidade.",
+      message:
+        "Não foi possível carregar a disponibilidade.",
     };
   }
 
   const busyAppointments =
     (appointmentData ?? []) as BusyAppointment[];
 
+  /*
+   * 3. Converte os horários em minutos.
+   */
   const opening = timeToMinutes(
     businessHour.open_time,
   );
@@ -192,23 +187,34 @@ export async function getAvailableTimes(
     businessHour.close_time,
   );
 
-  const breakStart = businessHour.break_start
-    ? timeToMinutes(businessHour.break_start)
-    : null;
+  const breakStart =
+    businessHour.break_start
+      ? timeToMinutes(
+          businessHour.break_start,
+        )
+      : null;
 
-  const breakEnd = businessHour.break_end
-    ? timeToMinutes(businessHour.break_end)
-    : null;
+  const breakEnd =
+    businessHour.break_end
+      ? timeToMinutes(
+          businessHour.break_end,
+        )
+      : null;
 
   const slotInterval =
     businessHour.slot_interval_minutes || 30;
 
   const requestedDuration = Math.max(
-    Number(serviceDurationMinutes) || slotInterval,
+    Number(serviceDurationMinutes) ||
+      slotInterval,
     slotInterval,
   );
 
+  /*
+   * 4. Horário atual do Brasil.
+   */
   const today = getBrazilToday();
+
   const currentMinutes =
     date === today
       ? getBrazilCurrentMinutes()
@@ -216,19 +222,29 @@ export async function getAvailableTimes(
 
   const availableTimes: string[] = [];
 
+  /*
+   * 5. Calcula os horários disponíveis.
+   */
   for (
     let start = opening;
     start < closing;
     start += slotInterval
   ) {
-    const end = start + requestedDuration;
+    const end =
+      start + requestedDuration;
 
-    // O serviço precisa terminar antes do fechamento.
+    /*
+     * Serviço precisa terminar
+     * antes do fechamento.
+     */
     if (end > closing) {
       continue;
     }
 
-    // Não mostra horários que já passaram no dia atual.
+    /*
+     * Não mostra horários que
+     * já passaram hoje.
+     */
     if (
       currentMinutes !== null &&
       start <= currentMinutes
@@ -236,7 +252,10 @@ export async function getAvailableTimes(
       continue;
     }
 
-    // Não permite que o serviço atravesse o intervalo.
+    /*
+     * Não permite atravessar
+     * o intervalo da barbearia.
+     */
     if (
       breakStart !== null &&
       breakEnd !== null &&
@@ -250,37 +269,45 @@ export async function getAvailableTimes(
       continue;
     }
 
+    /*
+     * Verifica conflito com
+     * agendamentos existentes.
+     */
     const conflictsWithAppointment =
-      busyAppointments.some((appointment) => {
-        if (!appointment.start_time) {
-          return false;
-        }
+      busyAppointments.some(
+        (appointment) => {
+          if (
+            !appointment.start_time
+          ) {
+            return false;
+          }
 
-        const appointmentStart =
-          timeToMinutes(appointment.start_time);
+          const appointmentStart =
+            timeToMinutes(
+              appointment.start_time,
+            );
 
-        const service =
-          getRelation(
-            appointment.selected_service,
+          const appointmentDuration =
+            Number(
+              appointment.duration_minutes,
+            ) || slotInterval;
+
+          const appointmentEnd =
+            appointmentStart +
+            appointmentDuration;
+
+          return rangesOverlap(
+            start,
+            end,
+            appointmentStart,
+            appointmentEnd,
           );
+        },
+      );
 
-        const appointmentDuration =
-          service?.duration_minutes ??
-          slotInterval;
-
-        const appointmentEnd =
-          appointmentStart +
-          appointmentDuration;
-
-        return rangesOverlap(
-          start,
-          end,
-          appointmentStart,
-          appointmentEnd,
-        );
-      });
-
-    if (conflictsWithAppointment) {
+    if (
+      conflictsWithAppointment
+    ) {
       continue;
     }
 
