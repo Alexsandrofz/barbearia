@@ -1,5 +1,6 @@
 "use client";
 
+import { BOOKING_TIME_SLOTS } from "@/lib/time-slots";
 import { useEffect, useMemo, useState } from "react";
 import { Clock, Loader2, MapPin, Phone } from "lucide-react";
 
@@ -14,26 +15,7 @@ type Props = {
   services: Service[];
 };
 
-const availableTimes = [
-  "09:00",
-  "09:30",
-  "10:00",
-  "10:30",
-  "11:00",
-  "11:30",
-  "12:00",
-  "13:00",
-  "13:30",
-  "14:00",
-  "14:30",
-  "15:00",
-  "15:30",
-  "16:00",
-  "16:30",
-  "17:00",
-  "17:30",
-  "18:00",
-];
+
 
 const inputClass =
   "mt-2 h-12 w-full rounded-lg border border-input bg-background px-4 text-base text-foreground outline-none transition-colors placeholder:text-muted-foreground/70 focus:border-gold disabled:cursor-not-allowed disabled:opacity-60";
@@ -58,7 +40,7 @@ export default function Contact({
   }>(null);
 
   const freeTimes = useMemo(() => {
-    return availableTimes.filter(
+    return BOOKING_TIME_SLOTS.filter(
       (time) => !busyTimes.some((busyTime) => busyTime.startsWith(time)),
     );
   }, [busyTimes]);
