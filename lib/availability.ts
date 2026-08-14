@@ -10,12 +10,15 @@ export async function getBusyTimes(
     .from("appointments")
     .select("start_time")
     .eq("barber_id", barberId)
-    .eq("appointment_date", date);
+    .eq("appointment_date", date)
+    .in("status", ["pending", "confirmed"]);
 
   if (error) {
-    console.error(error);
+    console.error("Erro ao buscar horários ocupados:", error);
     return [];
   }
 
-  return data.map((item) => item.start_time);
+  return (data ?? [])
+    .map((item) => item.start_time)
+    .filter((time): time is string => Boolean(time));
 }
