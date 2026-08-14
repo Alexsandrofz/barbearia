@@ -1,9 +1,9 @@
 import { Suspense } from "react";
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 
 import CustomerProfile from "@/components/dashboard/CustomerProfile";
 
-import { getCurrentUserAccess } from "@/lib/auth-role";
+import { requireManagement } from "@/lib/route-access";
 
 import {
   getCustomerMetrics,
@@ -23,32 +23,39 @@ async function CustomerProfileContent({
 }: {
   customerId: string;
 }) {
-  const access =
-    await getCurrentUserAccess();
+  /*
+   * Somente owner e manager podem
+   * acessar os dados dos clientes.
+   *
+   * requireManagement também verifica:
+   * - se existe usuário logado;
+   * - se ele pertence à barbearia;
+   * - se possui businessId.
+   */
+  const access = await requireManagement();
 
-  if (!access) {
-    redirect("/login");
-  }
+  const businessId = access.businessId;
 
-  if (
-    access.role !== "owner" &&
-    access.role !== "manager"
-  ) {
-    redirect("/acesso");
-  }
-
-  if (!access.businessId) {
-    redirect("/dashboard");
+  /*
+   * Essa verificação também ajuda o
+   * TypeScript a entender que businessId
+   * definitivamente é uma string.
+   */
+  if (!businessId) {
+    throw new Error(
+      "Barbearia não encontrada para o usuário atual.",
+    );
   }
 
   const [customer, loyaltySettings] =
     await Promise.all([
       getCustomerProfile(
-        access.businessId,
+        businessId,
         customerId,
       ),
+
       getLoyaltySettings(
-        access.businessId,
+        businessId,
       ),
     ]);
 

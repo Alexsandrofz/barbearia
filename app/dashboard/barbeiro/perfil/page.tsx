@@ -1,55 +1,73 @@
 import { Suspense } from "react";
-
 import { redirect } from "next/navigation";
 
 import BarberProfileForm from "@/components/dashboard/BarberProfileForm";
 
-import { getCurrentUserAccess } from "@/lib/auth-role";
-
+import { requireBarber } from "@/lib/route-access";
 import { createClient } from "@/lib/supabase/server";
 
 async function BarberProfileContent() {
-  const access = await getCurrentUserAccess();
+  const access =
+    await requireBarber();
 
-  if (!access) {
-    redirect("/login");
-  }
+  const businessId =
+    access.businessId;
 
-  if (access.role !== "barber") {
-    redirect("/dashboard");
-  }
+  const barberId =
+    access.barberId;
 
-  if (!access.businessId || !access.barberId) {
+  if (
+    !businessId ||
+    !barberId
+  ) {
     redirect("/acesso");
   }
 
-  const supabase = await createClient();
+  const supabase =
+    await createClient();
 
   const {
     data: { user },
+    error: userError,
   } = await supabase.auth.getUser();
 
-  if (!user) {
+  if (
+    userError ||
+    !user
+  ) {
     redirect("/login");
   }
 
-  const { data: barber, error } = await supabase
+  const {
+    data: barber,
+    error,
+  } = await supabase
     .from("barbers")
-    .select(
-      `
-        id,
-        name,
-        specialty,
-        photo_url,
-        active
-      `,
+    .select(`
+      id,
+      name,
+      specialty,
+      photo_url,
+      active
+    `)
+    .eq(
+      "id",
+      barberId,
     )
-    .eq("id", access.barberId)
-    .eq("business_id", access.businessId)
+    .eq(
+      "business_id",
+      businessId,
+    )
     .maybeSingle();
 
-  if (error || !barber) {
-    console.error("Erro ao carregar perfil do barbeiro:", error);
+  if (
+    error ||
+    !barber
+  ) {
+    console.error(
+      "Erro ao carregar perfil do barbeiro:",
+      error,
+    );
 
     redirect("/acesso");
   }
@@ -58,9 +76,13 @@ async function BarberProfileContent() {
     <main className="min-h-screen bg-background px-5 py-8 text-foreground sm:px-8 sm:py-10">
       <div className="mx-auto w-full max-w-7xl">
         <div>
-          <p className="eyebrow">Área do profissional</p>
+          <p className="eyebrow">
+            Área do profissional
+          </p>
 
-          <h1 className="mt-3 font-display text-3xl sm:text-4xl">Meu perfil</h1>
+          <h1 className="mt-3 font-display text-3xl sm:text-4xl">
+            Meu perfil
+          </h1>
 
           <p className="mt-2 max-w-2xl text-muted-foreground">
             Consulte e atualize suas informações profissionais.
@@ -68,12 +90,25 @@ async function BarberProfileContent() {
         </div>
 
         <BarberProfileForm
-          businessId={access.businessId}
-          name={barber.name}
-          specialty={barber.specialty}
-          email={user.email ?? "E-mail não informado"}
-          photoUrl={barber.photo_url}
-          active={barber.active}
+          businessId={
+            businessId
+          }
+          name={
+            barber.name
+          }
+          specialty={
+            barber.specialty
+          }
+          email={
+            user.email ??
+            "E-mail não informado"
+          }
+          photoUrl={
+            barber.photo_url
+          }
+          active={
+            barber.active
+          }
         />
       </div>
     </main>
@@ -100,7 +135,11 @@ function BarberProfileLoading() {
 
 export default function BarberProfilePage() {
   return (
-    <Suspense fallback={<BarberProfileLoading />}>
+    <Suspense
+      fallback={
+        <BarberProfileLoading />
+      }
+    >
       <BarberProfileContent />
     </Suspense>
   );

@@ -1,41 +1,44 @@
 import { Suspense } from "react";
-import { redirect } from "next/navigation";
 
 import FinanceDashboard from "@/components/dashboard/FinanceDashboard";
 
-import { getCurrentUserAccess } from "@/lib/auth-role";
 import { getFinanceSummary } from "@/lib/finance";
+import { requireOwner } from "@/lib/route-access";
 
 async function FinanceContent() {
-  const access = await getCurrentUserAccess();
+  const access = await requireOwner();
 
-  if (!access) {
-    redirect("/login");
+  const businessId = access.businessId;
+
+  if (!businessId) {
+    throw new Error(
+      "Barbearia não encontrada para o usuário atual.",
+    );
   }
 
-  if (access.role !== "owner") {
-    redirect("/dashboard");
-  }
-
-  if (!access.businessId) {
-    redirect("/acesso");
-  }
-
-  const summary = await getFinanceSummary(access.businessId);
+  const summary =
+    await getFinanceSummary(
+      businessId,
+    );
 
   return (
     <main className="min-h-screen bg-background px-5 py-8 text-foreground sm:px-8 sm:py-10">
       <div className="mx-auto w-full max-w-7xl">
-        <p className="eyebrow">Gestão financeira</p>
-
-        <h1 className="mt-3 font-display text-3xl sm:text-4xl">Financeiro</h1>
-
-        <p className="mt-2 max-w-2xl text-muted-foreground">
-          Acompanhe o faturamento dos atendimentos concluídos e os principais
-          indicadores da barbearia.
+        <p className="eyebrow">
+          Gestão financeira
         </p>
 
-        <FinanceDashboard summary={summary} />
+        <h1 className="mt-3 font-display text-3xl sm:text-4xl">
+          Financeiro
+        </h1>
+
+        <p className="mt-2 max-w-2xl text-muted-foreground">
+          Acompanhe o faturamento dos atendimentos concluídos e os principais indicadores da barbearia.
+        </p>
+
+        <FinanceDashboard
+          summary={summary}
+        />
       </div>
     </main>
   );
@@ -79,7 +82,11 @@ function FinanceLoading() {
 
 export default function FinancePage() {
   return (
-    <Suspense fallback={<FinanceLoading />}>
+    <Suspense
+      fallback={
+        <FinanceLoading />
+      }
+    >
       <FinanceContent />
     </Suspense>
   );

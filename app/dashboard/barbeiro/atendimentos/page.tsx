@@ -1,28 +1,27 @@
 import { Suspense } from "react";
-import { redirect } from "next/navigation";
 
 import BarberHistory from "@/components/dashboard/BarberHistory";
 
-import { getCurrentUserAccess } from "@/lib/auth-role";
+import { requireBarber } from "@/lib/route-access";
 import { createClient } from "@/lib/supabase/server";
 
 async function BarberAppointmentsContent() {
   const access =
-    await getCurrentUserAccess();
+    await requireBarber();
 
-  if (!access) {
-    redirect("/login");
-  }
+  const businessId =
+    access.businessId;
 
-  if (access.role !== "barber") {
-    redirect("/dashboard");
-  }
+  const barberId =
+    access.barberId;
 
   if (
-    !access.businessId ||
-    !access.barberId
+    !businessId ||
+    !barberId
   ) {
-    redirect("/acesso");
+    throw new Error(
+      "Não foi possível identificar o profissional atual.",
+    );
   }
 
   const supabase =
@@ -51,25 +50,17 @@ async function BarberAppointmentsContent() {
     `)
     .eq(
       "business_id",
-      access.businessId,
+      businessId,
     )
     .eq(
       "barber_id",
-      access.barberId,
+      barberId,
     )
-
-    /*
-     * Histórico = somente o que já terminou.
-     *
-     * Pendente e confirmado continuam
-     * exclusivamente na Minha agenda.
-     */
     .in("status", [
       "completed",
       "cancelled",
       "no_show",
     ])
-
     .order(
       "appointment_date",
       {
@@ -107,7 +98,8 @@ async function BarberAppointmentsContent() {
           </h1>
 
           <p className="mt-2 max-w-2xl text-muted-foreground">
-            Consulte seu histórico de atendimentos concluídos, cancelados e não comparecimentos.
+            Consulte seu histórico de atendimentos concluídos,
+            cancelados e não comparecimentos.
           </p>
         </div>
 

@@ -4,6 +4,8 @@ import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   CheckCircle2,
+  Eye,
+  EyeOff,
   ImageIcon,
   KeyRound,
   Loader2,
@@ -21,6 +23,7 @@ import {
 
 import {
   createBarberAccess,
+  resetBarberPassword,
   saveBarber,
   toggleBarberStatus,
 } from "@/lib/barbers-actions";
@@ -86,7 +89,7 @@ export default function BarbersManager({
   ] = useState<string | null>(null);
 
   /*
-   * ACESSO DO BARBEIRO
+   * CRIAÇÃO DE ACESSO
    */
   const [
     accessBarber,
@@ -106,6 +109,11 @@ export default function BarbersManager({
   ] = useState("");
 
   const [
+    showAccessPassword,
+    setShowAccessPassword,
+  ] = useState(false);
+
+  const [
     accessMessage,
     setAccessMessage,
   ] = useState<null | {
@@ -118,6 +126,49 @@ export default function BarbersManager({
     startAccessTransition,
   ] = useTransition();
 
+  /*
+   * REDEFINIÇÃO DE SENHA
+   */
+  const [
+    passwordBarber,
+    setPasswordBarber,
+  ] = useState<BarberWithAccess | null>(
+    null,
+  );
+
+  const [
+    newPassword,
+    setNewPassword,
+  ] = useState("");
+
+  const [
+    confirmPassword,
+    setConfirmPassword,
+  ] = useState("");
+
+  const [
+    showNewPassword,
+    setShowNewPassword,
+  ] = useState(false);
+
+  const [
+    showConfirmPassword,
+    setShowConfirmPassword,
+  ] = useState(false);
+
+  const [
+    passwordMessage,
+    setPasswordMessage,
+  ] = useState<null | {
+    success: boolean;
+    text: string;
+  }>(null);
+
+  const [
+    isResettingPassword,
+    startPasswordTransition,
+  ] = useTransition();
+
   const activeCount = useMemo(
     () =>
       barbers.filter(
@@ -128,9 +179,8 @@ export default function BarbersManager({
 
   const accessCount = useMemo(
     () =>
-      barbers.filter(
-        (barber) =>
-          Boolean(barber.user_id),
+      barbers.filter((barber) =>
+        Boolean(barber.user_id),
       ).length,
     [barbers],
   );
@@ -183,6 +233,7 @@ export default function BarbersManager({
     setAccessBarber(barber);
     setAccessEmail("");
     setAccessPassword("");
+    setShowAccessPassword(false);
     setAccessMessage(null);
   }
 
@@ -194,7 +245,32 @@ export default function BarbersManager({
     setAccessBarber(null);
     setAccessEmail("");
     setAccessPassword("");
+    setShowAccessPassword(false);
     setAccessMessage(null);
+  }
+
+  function openPasswordForm(
+    barber: BarberWithAccess,
+  ) {
+    setPasswordBarber(barber);
+    setNewPassword("");
+    setConfirmPassword("");
+    setShowNewPassword(false);
+    setShowConfirmPassword(false);
+    setPasswordMessage(null);
+  }
+
+  function closePasswordForm() {
+    if (isResettingPassword) {
+      return;
+    }
+
+    setPasswordBarber(null);
+    setNewPassword("");
+    setConfirmPassword("");
+    setShowNewPassword(false);
+    setShowConfirmPassword(false);
+    setPasswordMessage(null);
   }
 
   async function handlePhotoUpload(
@@ -323,10 +399,8 @@ export default function BarbersManager({
             {
               barberId:
                 accessBarber.id,
-
               email:
                 accessEmail,
-
               password:
                 accessPassword,
             },
@@ -340,18 +414,70 @@ export default function BarbersManager({
 
         if (result.success) {
           setAccessPassword("");
+          setShowAccessPassword(false);
 
           router.refresh();
 
-          /*
-           * Fecha depois de mostrar
-           * rapidamente a mensagem.
-           */
           setTimeout(() => {
             setAccessBarber(null);
             setAccessEmail("");
             setAccessMessage(null);
           }, 900);
+        }
+      },
+    );
+  }
+
+  function handleResetPassword() {
+    if (!passwordBarber) {
+      return;
+    }
+
+    setPasswordMessage(null);
+
+    if (newPassword.length < 6) {
+      setPasswordMessage({
+        success: false,
+        text:
+          "A senha deve possuir pelo menos 6 caracteres.",
+      });
+
+      return;
+    }
+
+    if (
+      newPassword !==
+      confirmPassword
+    ) {
+      setPasswordMessage({
+        success: false,
+        text:
+          "As senhas não coincidem.",
+      });
+
+      return;
+    }
+
+    startPasswordTransition(
+      async () => {
+        const result =
+          await resetBarberPassword(
+            businessId,
+            passwordBarber.id,
+            newPassword,
+          );
+
+        setPasswordMessage({
+          success:
+            result.success,
+          text: result.message,
+        });
+
+        if (result.success) {
+          setNewPassword("");
+          setConfirmPassword("");
+          setShowNewPassword(false);
+          setShowConfirmPassword(false);
         }
       },
     );
@@ -411,8 +537,7 @@ export default function BarbersManager({
           </h2>
 
           <p className="mt-1 text-sm text-muted-foreground">
-            Gerencie os profissionais
-            e os acessos ao painel.
+            Gerencie os profissionais e os acessos ao painel.
           </p>
         </div>
 
@@ -453,8 +578,7 @@ export default function BarbersManager({
           </h3>
 
           <p className="mt-2 max-w-md text-sm text-muted-foreground">
-            Cadastre o primeiro
-            profissional da equipe.
+            Cadastre o primeiro profissional da equipe.
           </p>
         </section>
       ) : (
@@ -523,7 +647,6 @@ export default function BarbersManager({
                       </div>
                     </div>
 
-                    {/* STATUS DE ACESSO */}
                     <div
                       className={`mt-5 flex items-center gap-3 rounded-xl border p-4 ${
                         hasAccess
@@ -602,7 +725,7 @@ export default function BarbersManager({
                       </button>
                     </div>
 
-                    {!hasAccess && (
+                    {!hasAccess ? (
                       <button
                         type="button"
                         disabled={
@@ -616,8 +739,20 @@ export default function BarbersManager({
                         className="mt-3 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-gold/30 bg-gold/5 px-4 text-sm font-semibold text-gold transition-colors hover:bg-gold/10 disabled:cursor-not-allowed disabled:opacity-40"
                       >
                         <KeyRound className="h-4 w-4" />
-
                         Criar acesso
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          openPasswordForm(
+                            barber,
+                          )
+                        }
+                        className="mt-3 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-gold/30 bg-gold/5 px-4 text-sm font-semibold text-gold transition-colors hover:bg-gold/10"
+                      >
+                        <LockKeyhole className="h-4 w-4" />
+                        Redefinir senha
                       </button>
                     )}
                   </div>
@@ -688,9 +823,8 @@ export default function BarbersManager({
                     setForm(
                       (current) => ({
                         ...current,
-                        name: event
-                          .target
-                          .value,
+                        name:
+                          event.target.value,
                       }),
                     )
                   }
@@ -721,8 +855,7 @@ export default function BarbersManager({
                       (current) => ({
                         ...current,
                         specialty:
-                          event.target
-                            .value,
+                          event.target.value,
                       }),
                     )
                   }
@@ -826,9 +959,7 @@ export default function BarbersManager({
                   </span>
 
                   <span className="mt-1 block text-sm text-muted-foreground">
-                    Profissionais ativos
-                    ficam disponíveis para
-                    agendamento.
+                    Profissionais ativos ficam disponíveis para agendamento.
                   </span>
                 </span>
 
@@ -846,8 +977,7 @@ export default function BarbersManager({
                       (current) => ({
                         ...current,
                         active:
-                          event.target
-                            .checked,
+                          event.target.checked,
                       }),
                     )
                   }
@@ -961,8 +1091,7 @@ export default function BarbersManager({
                     }
                     onChange={(event) =>
                       setAccessEmail(
-                        event.target
-                          .value,
+                        event.target.value,
                       )
                     }
                     placeholder="barbeiro@email.com"
@@ -980,11 +1109,15 @@ export default function BarbersManager({
                 </label>
 
                 <div className="relative mt-2">
-                  <LockKeyhole className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
+                  <LockKeyhole className="pointer-events-none absolute left-4 top-1/2 z-10 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
 
                   <input
                     id="access-password"
-                    type="password"
+                    type={
+                      showAccessPassword
+                        ? "text"
+                        : "password"
+                    }
                     value={
                       accessPassword
                     }
@@ -993,37 +1126,47 @@ export default function BarbersManager({
                     }
                     onChange={(event) =>
                       setAccessPassword(
-                        event.target
-                          .value,
+                        event.target.value,
                       )
                     }
                     placeholder="Mínimo 6 caracteres"
-                    className="h-12 w-full rounded-lg border border-input bg-background pl-12 pr-4 outline-none transition-colors focus:border-gold disabled:opacity-60"
+                    className="h-12 w-full rounded-lg border border-input bg-background pl-12 pr-14 outline-none transition-colors focus:border-gold disabled:opacity-60"
                   />
+
+                  <button
+                    type="button"
+                    disabled={
+                      isCreatingAccess
+                    }
+                    onClick={() =>
+                      setShowAccessPassword(
+                        (current) =>
+                          !current,
+                      )
+                    }
+                    aria-label={
+                      showAccessPassword
+                        ? "Ocultar senha"
+                        : "Mostrar senha"
+                    }
+                    title={
+                      showAccessPassword
+                        ? "Ocultar senha"
+                        : "Mostrar senha"
+                    }
+                    className="absolute right-2 top-1/2 z-20 grid h-9 w-9 -translate-y-1/2 place-items-center rounded-lg text-muted-foreground transition-colors hover:bg-secondary hover:text-gold disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    {showAccessPassword ? (
+                      <EyeOff className="h-5 w-5" />
+                    ) : (
+                      <Eye className="h-5 w-5" />
+                    )}
+                  </button>
                 </div>
 
                 <p className="mt-2 text-xs text-muted-foreground">
-                  O profissional usará
-                  este e-mail e senha em
-                  /login.
+                  O profissional usará este e-mail e senha em /login.
                 </p>
-              </div>
-
-              <div className="rounded-xl border border-gold/20 bg-gold/5 p-4">
-                <div className="flex gap-3">
-                  <KeyRound className="mt-0.5 h-5 w-5 shrink-0 text-gold" />
-
-                  <p className="text-sm leading-relaxed text-muted-foreground">
-                    Após criar o acesso,
-                    este profissional será
-                    vinculado automaticamente
-                    à barbearia com o perfil{" "}
-                    <span className="font-semibold text-foreground">
-                      barbeiro
-                    </span>
-                    .
-                  </p>
-                </div>
               </div>
 
               {accessMessage && (
@@ -1039,9 +1182,7 @@ export default function BarbersManager({
                     <CheckCircle2 className="h-4 w-4" />
                   )}
 
-                  {
-                    accessMessage.text
-                  }
+                  {accessMessage.text}
                 </p>
               )}
             </div>
@@ -1082,6 +1223,244 @@ export default function BarbersManager({
                 {isCreatingAccess
                   ? "Criando acesso..."
                   : "Criar acesso"}
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
+
+      {/* MODAL REDEFINIR SENHA */}
+      {passwordBarber && (
+        <div className="fixed inset-0 z-[90] flex items-center justify-center p-4">
+          <button
+            type="button"
+            aria-label="Fechar redefinição de senha"
+            onClick={
+              closePasswordForm
+            }
+            className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+          />
+
+          <section className="card-premium relative z-10 w-full max-w-lg p-6 sm:p-8">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="eyebrow">
+                  Segurança
+                </p>
+
+                <h2 className="mt-3 font-display text-3xl">
+                  Redefinir senha
+                </h2>
+
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Defina uma nova senha para{" "}
+                  <span className="font-semibold text-foreground">
+                    {passwordBarber.name}
+                  </span>
+                  .
+                </p>
+              </div>
+
+              <button
+                type="button"
+                disabled={
+                  isResettingPassword
+                }
+                onClick={
+                  closePasswordForm
+                }
+                aria-label="Fechar"
+                className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-border text-muted-foreground transition-colors hover:text-foreground disabled:opacity-50"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="mt-7 space-y-5">
+              <div>
+                <label
+                  htmlFor="new-password"
+                  className="text-sm text-muted-foreground"
+                >
+                  Nova senha
+                </label>
+
+                <div className="relative mt-2">
+                  <LockKeyhole className="pointer-events-none absolute left-4 top-1/2 z-10 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
+
+                  <input
+                    id="new-password"
+                    type={
+                      showNewPassword
+                        ? "text"
+                        : "password"
+                    }
+                    value={
+                      newPassword
+                    }
+                    disabled={
+                      isResettingPassword
+                    }
+                    onChange={(event) =>
+                      setNewPassword(
+                        event.target.value,
+                      )
+                    }
+                    placeholder="Mínimo 6 caracteres"
+                    className="h-12 w-full rounded-lg border border-input bg-background pl-12 pr-14 outline-none transition-colors focus:border-gold disabled:opacity-60"
+                  />
+
+                  <button
+                    type="button"
+                    disabled={
+                      isResettingPassword
+                    }
+                    onClick={() =>
+                      setShowNewPassword(
+                        (current) =>
+                          !current,
+                      )
+                    }
+                    aria-label={
+                      showNewPassword
+                        ? "Ocultar senha"
+                        : "Mostrar senha"
+                    }
+                    title={
+                      showNewPassword
+                        ? "Ocultar senha"
+                        : "Mostrar senha"
+                    }
+                    className="absolute right-2 top-1/2 z-20 grid h-9 w-9 -translate-y-1/2 place-items-center rounded-lg text-muted-foreground transition-colors hover:bg-secondary hover:text-gold disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    {showNewPassword ? (
+                      <EyeOff className="h-5 w-5" />
+                    ) : (
+                      <Eye className="h-5 w-5" />
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label
+                  htmlFor="confirm-password"
+                  className="text-sm text-muted-foreground"
+                >
+                  Confirmar nova senha
+                </label>
+
+                <div className="relative mt-2">
+                  <LockKeyhole className="pointer-events-none absolute left-4 top-1/2 z-10 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
+
+                  <input
+                    id="confirm-password"
+                    type={
+                      showConfirmPassword
+                        ? "text"
+                        : "password"
+                    }
+                    value={
+                      confirmPassword
+                    }
+                    disabled={
+                      isResettingPassword
+                    }
+                    onChange={(event) =>
+                      setConfirmPassword(
+                        event.target.value,
+                      )
+                    }
+                    placeholder="Digite novamente"
+                    className="h-12 w-full rounded-lg border border-input bg-background pl-12 pr-14 outline-none transition-colors focus:border-gold disabled:opacity-60"
+                  />
+
+                  <button
+                    type="button"
+                    disabled={
+                      isResettingPassword
+                    }
+                    onClick={() =>
+                      setShowConfirmPassword(
+                        (current) =>
+                          !current,
+                      )
+                    }
+                    aria-label={
+                      showConfirmPassword
+                        ? "Ocultar senha"
+                        : "Mostrar senha"
+                    }
+                    title={
+                      showConfirmPassword
+                        ? "Ocultar senha"
+                        : "Mostrar senha"
+                    }
+                    className="absolute right-2 top-1/2 z-20 grid h-9 w-9 -translate-y-1/2 place-items-center rounded-lg text-muted-foreground transition-colors hover:bg-secondary hover:text-gold disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    {showConfirmPassword ? (
+                      <EyeOff className="h-5 w-5" />
+                    ) : (
+                      <Eye className="h-5 w-5" />
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {passwordMessage && (
+                <p
+                  role="status"
+                  className={`flex items-center gap-2 text-sm ${
+                    passwordMessage.success
+                      ? "text-green-300"
+                      : "text-destructive"
+                  }`}
+                >
+                  {passwordMessage.success && (
+                    <CheckCircle2 className="h-4 w-4" />
+                  )}
+
+                  {passwordMessage.text}
+                </p>
+              )}
+            </div>
+
+            <div className="mt-8 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                onClick={
+                  closePasswordForm
+                }
+                disabled={
+                  isResettingPassword
+                }
+                className="inline-flex min-h-12 items-center justify-center rounded-xl border border-border px-5 text-sm font-semibold disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+
+              <button
+                type="button"
+                onClick={
+                  handleResetPassword
+                }
+                disabled={
+                  isResettingPassword ||
+                  newPassword.length < 6 ||
+                  confirmPassword.length <
+                    6
+                }
+                className="btn-gold min-h-12 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isResettingPassword ? (
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                ) : (
+                  <LockKeyhole className="h-5 w-5" />
+                )}
+
+                {isResettingPassword
+                  ? "Alterando..."
+                  : "Alterar senha"}
               </button>
             </div>
           </section>

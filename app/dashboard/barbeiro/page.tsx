@@ -12,10 +12,10 @@ import {
 
 import AgendaManager from "@/components/dashboard/AgendaManager";
 
-import { getCurrentUserAccess } from "@/lib/auth-role";
 import { getAgendaByDate } from "@/lib/agenda";
-import { getBusinessHours } from "@/lib/business-hours";
 import { getBarbersByBusiness } from "@/lib/barbers";
+import { getBusinessHours } from "@/lib/business-hours";
+import { requireBarber } from "@/lib/route-access";
 
 type BarberDashboardPageProps = {
   searchParams: Promise<{
@@ -35,33 +35,54 @@ function getBrazilDate() {
 function addDays(date: string, amount: number) {
   const current = new Date(`${date}T12:00:00Z`);
 
-  current.setUTCDate(current.getUTCDate() + amount);
+  current.setUTCDate(
+    current.getUTCDate() + amount,
+  );
 
-  return current.toISOString().slice(0, 10);
+  return current
+    .toISOString()
+    .slice(0, 10);
 }
 
-function isValidDate(date: string | undefined) {
+function isValidDate(
+  date: string | undefined,
+) {
   if (!date) {
     return false;
   }
 
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+  if (
+    !/^\d{4}-\d{2}-\d{2}$/.test(date)
+  ) {
     return false;
   }
 
-  const parsed = new Date(`${date}T12:00:00Z`);
+  const parsed = new Date(
+    `${date}T12:00:00Z`,
+  );
 
-  return !Number.isNaN(parsed.getTime());
+  return !Number.isNaN(
+    parsed.getTime(),
+  );
 }
 
-function formatDisplayDate(date: string) {
-  return new Intl.DateTimeFormat("pt-BR", {
-    timeZone: "UTC",
-    weekday: "long",
-    day: "2-digit",
-    month: "long",
-    year: "numeric",
-  }).format(new Date(`${date}T12:00:00Z`));
+function formatDisplayDate(
+  date: string,
+) {
+  return new Intl.DateTimeFormat(
+    "pt-BR",
+    {
+      timeZone: "UTC",
+      weekday: "long",
+      day: "2-digit",
+      month: "long",
+      year: "numeric",
+    },
+  ).format(
+    new Date(
+      `${date}T12:00:00Z`,
+    ),
+  );
 }
 
 async function BarberDashboardContent({
@@ -69,17 +90,26 @@ async function BarberDashboardContent({
 }: {
   selectedDate: string;
 }) {
-  const access = await getCurrentUserAccess();
+  /*
+   * requireBarber já verifica:
+   * - usuário autenticado;
+   * - role === barber;
+   * - businessId existente;
+   * - barberId existente.
+   */
+  const access =
+    await requireBarber();
 
-  if (!access) {
-    redirect("/login");
-  }
+  const businessId =
+    access.businessId;
 
-  if (access.role !== "barber") {
-    redirect("/dashboard");
-  }
+  const barberId =
+    access.barberId;
 
-  if (!access.businessId || !access.barberId) {
+  if (
+    !businessId ||
+    !barberId
+  ) {
     redirect("/acesso");
   }
 
@@ -89,106 +119,154 @@ async function BarberDashboardContent({
     businessHours,
   ] = await Promise.all([
     getAgendaByDate(
-      access.businessId,
+      businessId,
       selectedDate,
     ),
 
     getBarbersByBusiness(
-      access.businessId,
+      businessId,
     ),
 
     getBusinessHours(
-      access.businessId,
+      businessId,
     ),
   ]);
 
-  const barber = allBarbers.find(
-    (item) => item.id === access.barberId,
-  );
+  const barber =
+    allBarbers.find(
+      (item) =>
+        item.id === barberId,
+    );
 
   if (!barber) {
     redirect("/acesso");
   }
 
-  const selectedWeekday = new Date(
-    `${selectedDate}T12:00:00Z`,
-  ).getUTCDay();
+  const selectedWeekday =
+    new Date(
+      `${selectedDate}T12:00:00Z`,
+    ).getUTCDay();
 
   const businessHour =
     businessHours.find(
       (hour) =>
-        hour.weekday === selectedWeekday,
+        hour.weekday ===
+        selectedWeekday,
     ) ?? null;
 
+  /*
+   * Mesmo que getAgendaByDate retorne
+   * todos os profissionais da empresa,
+   * o barbeiro só recebe os próprios
+   * atendimentos nesta página.
+   */
   const barberAppointments =
-    appointments.filter((appointment) => {
-      const relation = Array.isArray(
-        appointment.barber,
-      )
-        ? appointment.barber[0]
-        : appointment.barber;
+    appointments.filter(
+      (appointment) => {
+        const relation =
+          Array.isArray(
+            appointment.barber,
+          )
+            ? appointment
+                .barber[0]
+            : appointment.barber;
 
-      return relation?.id === access.barberId;
-    });
+        return (
+          relation?.id ===
+          barberId
+        );
+      },
+    );
 
   const pendingCount =
     barberAppointments.filter(
       (appointment) =>
-        appointment.status === "pending",
+        appointment.status ===
+        "pending",
     ).length;
 
   const confirmedCount =
     barberAppointments.filter(
       (appointment) =>
-        appointment.status === "confirmed",
+        appointment.status ===
+        "confirmed",
     ).length;
 
   const completedCount =
     barberAppointments.filter(
       (appointment) =>
-        appointment.status === "completed",
+        appointment.status ===
+        "completed",
     ).length;
 
   const activeAppointments =
     barberAppointments.filter(
       (appointment) =>
-        appointment.status !== "cancelled" &&
-        appointment.status !== "no_show",
+        appointment.status !==
+          "cancelled" &&
+        appointment.status !==
+          "no_show",
     );
 
-  const today = getBrazilDate();
+  const today =
+    getBrazilDate();
 
   const isToday =
     selectedDate === today;
 
   const previousDate =
-    addDays(selectedDate, -1);
+    addDays(
+      selectedDate,
+      -1,
+    );
 
   const nextDate =
-    addDays(selectedDate, 1);
+    addDays(
+      selectedDate,
+      1,
+    );
 
   const cards = [
     {
       label: isToday
         ? "Atendimentos hoje"
         : "Atendimentos do dia",
-      value: activeAppointments.length,
-      icon: CalendarDays,
+
+      value:
+        activeAppointments.length,
+
+      icon:
+        CalendarDays,
     },
     {
-      label: "Pendentes",
-      value: pendingCount,
-      icon: CircleDashed,
+      label:
+        "Pendentes",
+
+      value:
+        pendingCount,
+
+      icon:
+        CircleDashed,
     },
     {
-      label: "Confirmados",
-      value: confirmedCount,
-      icon: CheckCircle2,
+      label:
+        "Confirmados",
+
+      value:
+        confirmedCount,
+
+      icon:
+        CheckCircle2,
     },
     {
-      label: "Concluídos",
-      value: completedCount,
-      icon: Scissors,
+      label:
+        "Concluídos",
+
+      value:
+        completedCount,
+
+      icon:
+        Scissors,
     },
   ];
 
@@ -216,7 +294,9 @@ async function BarberDashboardContent({
             </p>
 
             <p className="mt-1 text-sm font-semibold capitalize">
-              {formatDisplayDate(selectedDate)}
+              {formatDisplayDate(
+                selectedDate,
+              )}
             </p>
 
             <div className="mt-4 flex flex-wrap items-center gap-2">
@@ -255,7 +335,9 @@ async function BarberDashboardContent({
                 <input
                   type="date"
                   name="date"
-                  defaultValue={selectedDate}
+                  defaultValue={
+                    selectedDate
+                  }
                   aria-label="Selecionar data"
                   className="h-10 rounded-lg border border-border bg-background px-3 text-xs text-foreground outline-none transition-colors focus:border-gold"
                 />
@@ -330,12 +412,14 @@ function BarberDashboardLoading() {
         <section className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {Array.from({
             length: 4,
-          }).map((_, index) => (
-            <div
-              key={index}
-              className="h-32 rounded-2xl border border-border bg-surface"
-            />
-          ))}
+          }).map(
+            (_, index) => (
+              <div
+                key={index}
+                className="h-32 rounded-2xl border border-border bg-surface"
+              />
+            ),
+          )}
         </section>
 
         <div className="mt-8 h-40 rounded-2xl border border-border bg-surface" />
@@ -356,13 +440,17 @@ async function BarberDashboardWithDate({
     getBrazilDate();
 
   const selectedDate =
-    isValidDate(params.date)
+    isValidDate(
+      params.date,
+    )
       ? params.date!
       : today;
 
   return (
     <BarberDashboardContent
-      selectedDate={selectedDate}
+      selectedDate={
+        selectedDate
+      }
     />
   );
 }

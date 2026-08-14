@@ -9,12 +9,15 @@ export default async function AccessPage() {
     redirect("/login");
   }
 
-  if (access.role === "owner" || access.role === "manager") {
+  if (
+    access.role === "owner" ||
+    access.role === "manager"
+  ) {
     redirect("/dashboard");
   }
 
   if (access.role === "barber") {
-    redirect("/barbeiro/agenda");
+    redirect("/dashboard/barbeiro");
   }
 
   if (access.role === "customer") {

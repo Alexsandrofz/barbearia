@@ -351,3 +351,79 @@ export async function createBarberAccess(
     message: "Acesso do barbeiro criado com sucesso.",
   };
 }
+export async function resetBarberPassword(
+  businessId: string,
+  barberId: string,
+  newPassword: string,
+): Promise<BarberActionResult> {
+  const access = await getManagementAccess(businessId);
+
+  if (!access.allowed) {
+    return {
+      success: false,
+      message: access.message,
+    };
+  }
+
+  if (newPassword.trim().length < 6) {
+    return {
+      success: false,
+      message:
+        "A nova senha deve possuir pelo menos 6 caracteres.",
+    };
+  }
+
+  const admin = createAdminClient();
+
+  const {
+    data: barber,
+    error: barberError,
+  } = await admin
+    .from("barbers")
+    .select("id, user_id, name")
+    .eq("id", barberId)
+    .eq("business_id", businessId)
+    .maybeSingle();
+
+  if (barberError || !barber) {
+    return {
+      success: false,
+      message: "Barbeiro não encontrado.",
+    };
+  }
+
+  if (!barber.user_id) {
+    return {
+      success: false,
+      message:
+        "Este barbeiro ainda não possui acesso ao sistema.",
+    };
+  }
+
+  const { error } =
+    await admin.auth.admin.updateUserById(
+      barber.user_id,
+      {
+        password: newPassword.trim(),
+      },
+    );
+
+  if (error) {
+    console.error(
+      "Erro ao redefinir senha do barbeiro:",
+      error,
+    );
+
+    return {
+      success: false,
+      message:
+        "Não foi possível redefinir a senha.",
+    };
+  }
+
+  return {
+    success: true,
+    message:
+      "Senha redefinida com sucesso.",
+  };
+}

@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useState } from "react";
 import {
   ArrowLeft,
+  Eye,
+  EyeOff,
   Loader2,
   LockKeyhole,
   Mail,
@@ -21,19 +23,18 @@ type UserRole =
 export default function LoginPage() {
   const router = useRouter();
 
-  const [loading, setLoading] =
-    useState(false);
+  const [loading, setLoading] = useState(false);
 
-  const [errorMessage, setErrorMessage] =
-    useState("");
+  const [errorMessage, setErrorMessage] = useState("");
+
+  const [showPassword, setShowPassword] = useState(false);
 
   async function handleSubmit(
     event: React.FormEvent<HTMLFormElement>,
   ) {
     event.preventDefault();
 
-    const formData =
-      new FormData(event.currentTarget);
+    const formData = new FormData(event.currentTarget);
 
     const email = String(
       formData.get("email") ?? "",
@@ -54,16 +55,12 @@ export default function LoginPage() {
     const {
       data: authData,
       error: authError,
-    } =
-      await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
+    } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
 
-    if (
-      authError ||
-      !authData.user
-    ) {
+    if (authError || !authData.user) {
       setLoading(false);
 
       setErrorMessage(
@@ -115,15 +112,13 @@ export default function LoginPage() {
     /*
      * 3. Redireciona conforme o cargo.
      */
-    if (role === "owner") {
+    if (
+      role === "owner" ||
+      role === "manager"
+    ) {
       router.replace("/dashboard");
       router.refresh();
-      return;
-    }
 
-    if (role === "manager") {
-      router.replace("/dashboard");
-      router.refresh();
       return;
     }
 
@@ -133,6 +128,7 @@ export default function LoginPage() {
       );
 
       router.refresh();
+
       return;
     }
 
@@ -140,6 +136,7 @@ export default function LoginPage() {
       router.replace("/");
 
       router.refresh();
+
       return;
     }
 
@@ -164,6 +161,7 @@ export default function LoginPage() {
           className="mb-8 inline-flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-gold"
         >
           <ArrowLeft className="h-4 w-4" />
+
           Voltar para o site
         </Link>
 
@@ -186,6 +184,7 @@ export default function LoginPage() {
           onSubmit={handleSubmit}
           className="card-premium space-y-5 p-6 sm:p-8"
         >
+          {/* E-MAIL */}
           <div>
             <label
               htmlFor="email"
@@ -210,6 +209,7 @@ export default function LoginPage() {
             </div>
           </div>
 
+          {/* SENHA */}
           <div>
             <label
               htmlFor="password"
@@ -224,16 +224,49 @@ export default function LoginPage() {
               <input
                 id="password"
                 name="password"
-                type="password"
+                type={
+                  showPassword
+                    ? "text"
+                    : "password"
+                }
                 required
                 disabled={loading}
                 autoComplete="current-password"
                 placeholder="Sua senha"
-                className="h-12 w-full rounded-lg border border-input bg-background pl-12 pr-4 outline-none transition-colors focus:border-gold disabled:cursor-not-allowed disabled:opacity-60"
+                className="h-12 w-full rounded-lg border border-input bg-background pl-12 pr-14 outline-none transition-colors focus:border-gold disabled:cursor-not-allowed disabled:opacity-60"
               />
+
+              {/* OLHO */}
+              <button
+                type="button"
+                disabled={loading}
+                onClick={() =>
+                  setShowPassword(
+                    (current) => !current,
+                  )
+                }
+                aria-label={
+                  showPassword
+                    ? "Ocultar senha"
+                    : "Mostrar senha"
+                }
+                title={
+                  showPassword
+                    ? "Ocultar senha"
+                    : "Mostrar senha"
+                }
+                className="absolute right-2 top-1/2 z-10 grid h-9 w-9 -translate-y-1/2 place-items-center rounded-lg text-muted-foreground transition-colors hover:bg-secondary hover:text-gold disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {showPassword ? (
+                  <EyeOff className="h-5 w-5" />
+                ) : (
+                  <Eye className="h-5 w-5" />
+                )}
+              </button>
             </div>
           </div>
 
+          {/* BOTÃO ENTRAR */}
           <button
             type="submit"
             disabled={loading}
@@ -248,6 +281,7 @@ export default function LoginPage() {
               : "Entrar"}
           </button>
 
+          {/* ERRO */}
           {errorMessage && (
             <p
               role="alert"
