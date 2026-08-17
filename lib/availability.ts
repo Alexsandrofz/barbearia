@@ -143,10 +143,10 @@ export async function getAvailableTimes(
   }
 
   /*
-   * 2. Busca somente os horários ocupados.
+   * 2. Busca apenas os horários ocupados.
    *
-   * Não acessamos mais appointments diretamente
-   * no navegador.
+   * A RPC não expõe nome, telefone,
+   * observações ou customer_id.
    */
   const {
     data: appointmentData,
@@ -177,7 +177,7 @@ export async function getAvailableTimes(
     (appointmentData ?? []) as BusyAppointment[];
 
   /*
-   * 3. Converte os horários em minutos.
+   * 3. Converte os horários para minutos.
    */
   const opening = timeToMinutes(
     businessHour.open_time,
@@ -211,7 +211,7 @@ export async function getAvailableTimes(
   );
 
   /*
-   * 4. Horário atual do Brasil.
+   * 4. Verifica o horário atual no Brasil.
    */
   const today = getBrazilToday();
 
@@ -223,7 +223,7 @@ export async function getAvailableTimes(
   const availableTimes: string[] = [];
 
   /*
-   * 5. Calcula os horários disponíveis.
+   * 5. Monta a grade de horários.
    */
   for (
     let start = opening;
@@ -234,7 +234,7 @@ export async function getAvailableTimes(
       start + requestedDuration;
 
     /*
-     * Serviço precisa terminar
+     * O atendimento precisa terminar
      * antes do fechamento.
      */
     if (end > closing) {
@@ -242,8 +242,8 @@ export async function getAvailableTimes(
     }
 
     /*
-     * Não mostra horários que
-     * já passaram hoje.
+     * No dia atual, não exibe
+     * horários que já passaram.
      */
     if (
       currentMinutes !== null &&
@@ -253,7 +253,7 @@ export async function getAvailableTimes(
     }
 
     /*
-     * Não permite atravessar
+     * Não deixa o atendimento atravessar
      * o intervalo da barbearia.
      */
     if (
@@ -270,15 +270,13 @@ export async function getAvailableTimes(
     }
 
     /*
-     * Verifica conflito com
-     * agendamentos existentes.
+     * Verifica conflito com agendamentos
+     * pendentes ou confirmados.
      */
     const conflictsWithAppointment =
       busyAppointments.some(
         (appointment) => {
-          if (
-            !appointment.start_time
-          ) {
+          if (!appointment.start_time) {
             return false;
           }
 
