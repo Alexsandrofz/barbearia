@@ -11,84 +11,109 @@ export type AppointmentStatus =
   | "cancelled"
   | "no_show";
 
+type UpdateAppointmentResult = {
+  business_id: string;
+  customer_id: string | null;
+};
+
+function mapUpdateError(
+  message: string,
+) {
+  if (
+    message.includes(
+      "UNAUTHENTICATED",
+    )
+  ) {
+    return "Usuário não autenticado.";
+  }
+
+  if (
+    message.includes(
+      "APPOINTMENT_NOT_FOUND",
+    )
+  ) {
+    return "Agendamento não encontrado.";
+  }
+
+  if (
+    message.includes(
+      "NO_PERMISSION",
+    )
+  ) {
+    return "Você não possui permissão para alterar este agendamento.";
+  }
+
+  if (
+    message.includes(
+      "INVALID_STATUS_TRANSITION",
+    )
+  ) {
+    return "Essa alteração de status não é permitida.";
+  }
+
+  if (
+    message.includes(
+      "INVALID_STATUS",
+    )
+  ) {
+    return "Status de agendamento inválido.";
+  }
+
+  return "Não foi possível atualizar o agendamento.";
+}
+
 export async function updateAppointmentStatus(
   appointmentId: string,
   status: AppointmentStatus,
 ) {
-  const supabase = await createClient();
+  const supabase =
+    await createClient();
 
+  /*
+   * Confirma que existe uma sessão.
+   */
   const {
     data: { user },
     error: userError,
-  } = await supabase.auth.getUser();
-
-  if (userError || !user) {
-    throw new Error("Usuário não autenticado.");
-  }
-
-  /*
-   * Buscamos primeiro o agendamento para:
-   * - confirmar que ele pertence a uma empresa do usuário;
-   * - descobrir o customer_id;
-   * - conseguir revalidar o perfil do cliente.
-   */
-  const {
-    data: appointment,
-    error: appointmentError,
-  } = await supabase
-    .from("appointments")
-    .select(`
-      id,
-      business_id,
-      customer_id,
-      status
-    `)
-    .eq("id", appointmentId)
-    .maybeSingle();
-
-  if (appointmentError || !appointment) {
-    console.error(
-      "Erro ao buscar agendamento:",
-      appointmentError,
-    );
-
-    throw new Error(
-      "Agendamento não encontrado.",
-    );
-  }
-
-  /*
-   * Verifica se o usuário realmente pode alterar
-   * agendamentos dessa barbearia.
-   */
-  const {
-    data: membership,
-    error: membershipError,
-  } = await supabase
-    .from("business_members")
-    .select("role")
-    .eq("user_id", user.id)
-    .eq("business_id", appointment.business_id)
-    .eq("active", true)
-    .maybeSingle();
+  } =
+    await supabase.auth.getUser();
 
   if (
-    membershipError ||
-    !membership ||
-    !["owner", "manager"].includes(membership.role)
+    userError ||
+    !user
   ) {
     throw new Error(
-      "Você não possui permissão para alterar este agendamento.",
+      "Usuário não autenticado.",
     );
   }
 
-  const { error } = await supabase
-    .from("appointments")
-    .update({
-      status,
-    })
-    .eq("id", appointmentId)
-    .eq("business_id", appointment.business_id);
+  /*
+   * A função do banco faz toda
+   * a validação de segurança:
+   *
+   * owner:
+   *   agenda da barbearia
+   *
+   * manager:
+   *   agenda da barbearia
+   *
+   * barber:
+   *   somente os próprios
+   *   atendimentos
+   */
+  const {
+    data,
+    error,
+  } = await supabase.rpc(
+    "update_appointment_status_secure",
+    {
+      p_appointment_id:
+        appointmentId,
+
+      p_status:
+        status,
+    },
+  );
 
   if (error) {
     console.error(
@@ -97,25 +122,70 @@ export async function updateAppointmentStatus(
     );
 
     throw new Error(
+      mapUpdateError(
+        error.message ?? "",
+      ),
+    );
+  }
+
+  const result =
+    (
+      data?.[0] ??
+      null
+    ) as UpdateAppointmentResult | null;
+
+  if (!result) {
+    throw new Error(
       "Não foi possível atualizar o agendamento.",
     );
   }
 
   /*
-   * Atualiza todas as telas que dependem
-   * diretamente do status do atendimento.
+   * Painel administrativo.
    */
-  revalidatePath("/dashboard");
+  revalidatePath(
+    "/dashboard",
+  );
 
+  /*
+   * Agenda do barbeiro.
+   */
+  revalidatePath(
+    "/dashboard/barbeiro",
+  );
+
+  /*
+   * Histórico do barbeiro.
+   */
+  revalidatePath(
+    "/dashboard/barbeiro/atendimentos",
+  );
+
+  /*
+   * Clientes.
+   */
   revalidatePath(
     "/dashboard/clientes",
   );
 
-  if (appointment.customer_id) {
+  /*
+   * Perfil específico do cliente.
+   */
+  if (
+    result.customer_id
+  ) {
     revalidatePath(
-      `/dashboard/clientes/${appointment.customer_id}`,
+      `/dashboard/clientes/${result.customer_id}`,
     );
   }
+
+  /*
+   * Financeiro também depende
+   * dos atendimentos concluídos.
+   */
+  revalidatePath(
+    "/dashboard/financeiro",
+  );
 
   return {
     success: true,
