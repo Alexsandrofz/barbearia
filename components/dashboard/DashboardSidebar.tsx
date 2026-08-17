@@ -19,12 +19,7 @@ import {
 
 import { createClient } from "@/lib/supabase/client";
 
-type UserRole =
-  | "owner"
-  | "manager"
-  | "barber"
-  | "customer"
-  | "unauthorized";
+type UserRole = "owner" | "manager" | "barber" | "customer" | "unauthorized";
 
 type NavigationItem = {
   label: string;
@@ -77,6 +72,12 @@ const navigation: NavigationItem[] = [
     icon: Settings,
     roles: ["owner", "manager"],
   },
+  {
+    label: "Dados da barbearia",
+    href: "/dashboard/configuracoes/barbearia",
+    icon: Store,
+    roles: ["owner"],
+  },
 
   /*
    * BARBEIRO
@@ -114,13 +115,9 @@ export default function DashboardSidebar({
   const pathname = usePathname();
   const router = useRouter();
 
-  const [mobileOpen, setMobileOpen] =
-    useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
 
-  const [
-    isLoggingOut,
-    startLogoutTransition,
-  ] = useTransition();
+  const [isLoggingOut, startLogoutTransition] = useTransition();
 
   function closeMobileMenu() {
     setMobileOpen(false);
@@ -130,16 +127,12 @@ export default function DashboardSidebar({
     startLogoutTransition(async () => {
       const supabase = createClient();
 
-      const { error } =
-        await supabase.auth.signOut({
-          scope: "local",
-        });
+      const { error } = await supabase.auth.signOut({
+        scope: "local",
+      });
 
       if (error) {
-        console.error(
-          "Erro ao sair:",
-          error,
-        );
+        console.error("Erro ao sair:", error);
 
         return;
       }
@@ -149,26 +142,18 @@ export default function DashboardSidebar({
     });
   }
 
-  const visibleNavigation =
-    navigation.filter((item) =>
-      item.roles.includes(role),
-    );
+  const visibleNavigation = navigation.filter((item) =>
+    item.roles.includes(role),
+  );
 
-  const homeHref =
-    role === "barber"
-      ? "/dashboard/barbeiro"
-      : "/dashboard";
+  const homeHref = role === "barber" ? "/dashboard/barbeiro" : "/dashboard";
 
-  function isItemActive(
-    item: NavigationItem,
-  ) {
+  function isItemActive(item: NavigationItem) {
     if (item.exact) {
       return pathname === item.href;
     }
 
-    return pathname.startsWith(
-      item.href,
-    );
+    return pathname.startsWith(item.href);
   }
 
   const sidebarContent = (
@@ -186,9 +171,7 @@ export default function DashboardSidebar({
 
           <span className="min-w-0">
             <span className="block text-xs uppercase tracking-[0.18em] text-muted-foreground">
-              {role === "barber"
-                ? "Área do profissional"
-                : "Painel"}
+              {role === "barber" ? "Área do profissional" : "Painel"}
             </span>
 
             <span className="block truncate font-display text-lg">
@@ -217,40 +200,33 @@ export default function DashboardSidebar({
         className="flex-1 overflow-y-auto px-3 py-6"
       >
         <p className="mb-3 px-3 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-          {role === "barber"
-            ? "Profissional"
-            : "Gerenciamento"}
+          {role === "barber" ? "Profissional" : "Gerenciamento"}
         </p>
 
         <ul className="space-y-1">
-          {visibleNavigation.map(
-            (item) => {
-              const Icon = item.icon;
+          {visibleNavigation.map((item) => {
+            const Icon = item.icon;
 
-              const active =
-                isItemActive(item);
+            const active = isItemActive(item);
 
-              return (
-                <li key={item.href}>
-                  <Link
-                    href={item.href}
-                    onClick={
-                      closeMobileMenu
-                    }
-                    className={`flex min-h-12 items-center gap-3 rounded-xl px-3 text-sm font-medium transition-colors ${
-                      active
-                        ? "bg-gold/12 text-gold"
-                        : "text-muted-foreground hover:bg-secondary hover:text-foreground"
-                    }`}
-                  >
-                    <Icon className="h-5 w-5 shrink-0" />
+            return (
+              <li key={item.href}>
+                <Link
+                  href={item.href}
+                  onClick={closeMobileMenu}
+                  className={`flex min-h-12 items-center gap-3 rounded-xl px-3 text-sm font-medium transition-colors ${
+                    active
+                      ? "bg-gold/12 text-gold"
+                      : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+                  }`}
+                >
+                  <Icon className="h-5 w-5 shrink-0" />
 
-                    {item.label}
-                  </Link>
-                </li>
-              );
-            },
-          )}
+                  {item.label}
+                </Link>
+              </li>
+            );
+          })}
         </ul>
       </nav>
 
@@ -262,7 +238,6 @@ export default function DashboardSidebar({
           className="flex min-h-11 items-center gap-3 rounded-xl px-3 text-sm text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
         >
           <Store className="h-5 w-5" />
-
           Ver site público
         </Link>
 
@@ -274,9 +249,7 @@ export default function DashboardSidebar({
         >
           <LogOut className="h-5 w-5" />
 
-          {isLoggingOut
-            ? "Saindo..."
-            : "Sair"}
+          {isLoggingOut ? "Saindo..." : "Sair"}
         </button>
       </div>
     </>
@@ -291,16 +264,12 @@ export default function DashboardSidebar({
             <Scissors className="h-4 w-4" />
           </span>
 
-          <span className="truncate font-display">
-            {businessName}
-          </span>
+          <span className="truncate font-display">{businessName}</span>
         </div>
 
         <button
           type="button"
-          onClick={() =>
-            setMobileOpen(true)
-          }
+          onClick={() => setMobileOpen(true)}
           aria-label="Abrir menu"
           aria-expanded={mobileOpen}
           className="grid h-11 w-11 place-items-center rounded-full border border-border"

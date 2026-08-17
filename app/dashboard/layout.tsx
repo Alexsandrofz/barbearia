@@ -9,6 +9,7 @@ import { createClient } from "@/lib/supabase/server";
 type Business = {
   id: string;
   name: string;
+  primary_color: string | null;
 };
 
 async function DashboardLayoutContent({
@@ -42,7 +43,8 @@ async function DashboardLayoutContent({
     .from("businesses")
     .select(`
       id,
-      name
+      name,
+      primary_color
     `)
     .eq("id", access.businessId)
     .maybeSingle();
@@ -54,8 +56,20 @@ async function DashboardLayoutContent({
   const currentBusiness =
     business as Business;
 
+  const primaryColor =
+    currentBusiness.primary_color ||
+    "#d4af37";
+
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div
+      className="min-h-screen bg-background text-foreground"
+      style={
+        {
+          "--business-primary":
+            primaryColor,
+        } as React.CSSProperties
+      }
+    >
       <DashboardSidebar
         businessName={currentBusiness.name}
         role={access.role}

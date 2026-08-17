@@ -3,7 +3,8 @@
 @tailwind utilities;
 
 /* ============================================================
-   Design system — Barbearia premium (preto / branco / dourado)
+   Design system — Barbearia premium
+   Cor principal dinâmica por barbearia
    ============================================================ */
 
 :root {
@@ -11,44 +12,87 @@
 
   --background: 20 6% 8%;
   --foreground: 40 20% 97%;
+
   --surface: 24 6% 12%;
   --surface-2: 24 6% 16%;
 
   --card: 24 6% 12%;
   --card-foreground: 40 20% 97%;
 
-  --gold: 42 72% 62%;
-  --gold-soft: 44 70% 78%;
-  --gold-deep: 38 62% 46%;
+  /*
+   * Cor padrão.
+   *
+   * O dashboard/layout.tsx pode sobrescrever
+   * esta variável com a primary_color
+   * cadastrada no Supabase.
+   */
+  --business-primary: #d4af37;
 
-  --primary: 42 72% 62%;
+  --gold: var(--business-primary);
+
+  --gold-soft: color-mix(
+    in srgb,
+    var(--business-primary) 72%,
+    white
+  );
+
+  --gold-deep: color-mix(
+    in srgb,
+    var(--business-primary) 72%,
+    black
+  );
+
+  /*
+   * Variáveis tradicionais do tema.
+   */
   --primary-foreground: 24 10% 10%;
+
   --secondary: 24 6% 16%;
   --secondary-foreground: 40 20% 97%;
+
   --muted: 24 6% 16%;
   --muted-foreground: 40 6% 72%;
-  --accent: 42 72% 62%;
+
   --accent-foreground: 24 10% 10%;
+
   --destructive: 0 72% 50%;
   --destructive-foreground: 0 0% 98%;
+
   --border: 30 6% 26%;
   --input: 30 6% 26%;
-  --ring: 42 72% 62%;
 
+  /*
+   * Gradientes
+   */
   --gradient-gold: linear-gradient(
     120deg,
-    hsl(var(--gold-deep)),
-    hsl(var(--gold-soft)),
-    hsl(var(--gold-deep))
+    var(--gold-deep),
+    var(--gold-soft),
+    var(--gold-deep)
   );
+
   --gradient-veil: linear-gradient(
     to top,
     hsl(var(--background) / 0.96),
     hsl(var(--background) / 0.55) 45%,
     hsl(var(--background) / 0.8)
   );
-  --shadow-elegant: 0 24px 60px -30px hsl(var(--gold) / 0.35);
+
+  /*
+   * Sombras
+   */
+  --shadow-elegant:
+    0 24px 60px -30px
+    color-mix(
+      in srgb,
+      var(--business-primary) 35%,
+      transparent
+    );
 }
+
+/* ============================================================
+   BASE
+   ============================================================ */
 
 @layer base {
   * {
@@ -73,63 +117,296 @@
     @apply font-display;
     letter-spacing: -0.01em;
   }
+
+  /*
+   * Cor da seleção de texto.
+   */
+  ::selection {
+    background-color: color-mix(
+      in srgb,
+      var(--business-primary) 35%,
+      transparent
+    );
+
+    color: hsl(var(--foreground));
+  }
 }
+
+/* ============================================================
+   COMPONENTES
+   ============================================================ */
 
 @layer components {
   .section-shell {
     @apply mx-auto w-full max-w-7xl px-5 sm:px-8 lg:px-12;
   }
 
+  /*
+   * Texto pequeno superior.
+   */
   .eyebrow {
-    @apply inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.24em] text-gold;
+    @apply inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.24em];
+
+    color: var(--business-primary);
   }
 
+  /*
+   * Texto com gradiente.
+   */
   .text-gold-gradient {
     background-image: var(--gradient-gold);
+
     -webkit-background-clip: text;
     background-clip: text;
+
     color: transparent;
   }
 
+  /*
+   * Linha decorativa.
+   */
   .gold-rule {
     height: 1px;
     width: 100%;
+
     background-image: var(--gradient-gold);
+
     opacity: 0.6;
   }
 
+  /*
+   * Botão principal.
+   */
   .btn-gold {
-    @apply inline-flex min-h-12 items-center justify-center gap-2 rounded-full px-7 py-3 font-semibold tracking-wide transition-transform duration-200;
+    @apply inline-flex min-h-12 items-center justify-center gap-2 rounded-full px-7 py-3 font-semibold tracking-wide transition-all duration-200;
+
     background-image: var(--gradient-gold);
-    color: hsl(var(--primary-foreground));
+
+    color: #17120d;
+
     box-shadow: var(--shadow-elegant);
   }
+
   .btn-gold:hover {
     transform: translateY(-2px);
+
     filter: brightness(1.06);
   }
+
   .btn-gold:active {
     transform: translateY(0);
   }
 
+  /*
+   * Botão outline.
+   */
   .btn-outline-gold {
     @apply inline-flex min-h-12 items-center justify-center gap-2 rounded-full border px-7 py-3 font-semibold tracking-wide transition-all duration-200;
-    border-color: hsl(var(--gold) / 0.55);
-    color: hsl(var(--gold-soft));
+
+    border-color: color-mix(
+      in srgb,
+      var(--business-primary) 55%,
+      transparent
+    );
+
+    color: var(--gold-soft);
   }
+
   .btn-outline-gold:hover {
-    background-color: hsl(var(--gold) / 0.12);
+    background-color: color-mix(
+      in srgb,
+      var(--business-primary) 12%,
+      transparent
+    );
+
     transform: translateY(-2px);
   }
 
+  /*
+   * Cards premium.
+   */
   .card-premium {
     @apply rounded-2xl border transition-all duration-300;
-    border-color: hsl(var(--gold) / 0.18);
+
+    border-color: color-mix(
+      in srgb,
+      var(--business-primary) 18%,
+      transparent
+    );
+
     background-color: hsl(var(--surface));
   }
+
   .card-premium:hover {
     transform: translateY(-4px);
-    border-color: hsl(var(--gold) / 0.55);
+
+    border-color: color-mix(
+      in srgb,
+      var(--business-primary) 55%,
+      transparent
+    );
+
     box-shadow: var(--shadow-elegant);
+  }
+}
+
+/* ============================================================
+   UTILITÁRIOS DINÂMICOS
+   ============================================================ */
+
+@layer utilities {
+  /*
+   * Substitutos dinâmicos para text-gold,
+   * bg-gold e bordas quando necessário.
+   */
+
+  .text-business-primary {
+    color: var(--business-primary);
+  }
+
+  .bg-business-primary {
+    background-color: var(--business-primary);
+  }
+
+  .border-business-primary {
+    border-color: var(--business-primary);
+  }
+
+  .ring-business-primary {
+    --tw-ring-color: var(--business-primary);
+  }
+
+  /*
+   * Compatibilidade com classes text-gold.
+   *
+   * Essa regra força a cor dinâmica mesmo
+   * se Tailwind tiver gerado text-gold
+   * usando a configuração antiga.
+   */
+  .text-gold {
+    color: var(--business-primary) !important;
+  }
+
+  /*
+   * Fundos.
+   */
+  .bg-gold {
+    background-color: var(--business-primary) !important;
+  }
+
+  .bg-gold\/5 {
+    background-color: color-mix(
+      in srgb,
+      var(--business-primary) 5%,
+      transparent
+    ) !important;
+  }
+
+  .bg-gold\/10 {
+    background-color: color-mix(
+      in srgb,
+      var(--business-primary) 10%,
+      transparent
+    ) !important;
+  }
+
+  .bg-gold\/12 {
+    background-color: color-mix(
+      in srgb,
+      var(--business-primary) 12%,
+      transparent
+    ) !important;
+  }
+
+  .bg-gold\/20 {
+    background-color: color-mix(
+      in srgb,
+      var(--business-primary) 20%,
+      transparent
+    ) !important;
+  }
+
+  /*
+   * Bordas.
+   */
+  .border-gold {
+    border-color: var(--business-primary) !important;
+  }
+
+  .border-gold\/20 {
+    border-color: color-mix(
+      in srgb,
+      var(--business-primary) 20%,
+      transparent
+    ) !important;
+  }
+
+  .border-gold\/30 {
+    border-color: color-mix(
+      in srgb,
+      var(--business-primary) 30%,
+      transparent
+    ) !important;
+  }
+
+  .border-gold\/40 {
+    border-color: color-mix(
+      in srgb,
+      var(--business-primary) 40%,
+      transparent
+    ) !important;
+  }
+
+  .border-gold\/50 {
+    border-color: color-mix(
+      in srgb,
+      var(--business-primary) 50%,
+      transparent
+    ) !important;
+  }
+
+  /*
+   * Hover.
+   */
+  .hover\:text-gold:hover {
+    color: var(--business-primary) !important;
+  }
+
+  .hover\:bg-gold\/5:hover {
+    background-color: color-mix(
+      in srgb,
+      var(--business-primary) 5%,
+      transparent
+    ) !important;
+  }
+
+  .hover\:bg-gold\/10:hover {
+    background-color: color-mix(
+      in srgb,
+      var(--business-primary) 10%,
+      transparent
+    ) !important;
+  }
+
+  .hover\:border-gold\/50:hover {
+    border-color: color-mix(
+      in srgb,
+      var(--business-primary) 50%,
+      transparent
+    ) !important;
+  }
+
+  /*
+   * Focus.
+   */
+  .focus\:border-gold:focus {
+    border-color: var(--business-primary) !important;
+  }
+
+  /*
+   * Accent de checkbox/radio.
+   */
+  .accent-business-primary {
+    accent-color: var(--business-primary);
   }
 }
