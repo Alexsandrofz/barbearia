@@ -1,6 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import {
+  useEffect,
+  useState,
+} from "react";
+
+import { useSearchParams } from "next/navigation";
+
 import {
   Clock,
   Loader2,
@@ -42,11 +48,24 @@ export default function Contact({
   barbers,
   services,
 }: Props) {
-  const [loading, setLoading] =
-    useState(false);
+  /*
+   * Lê parâmetros da URL.
+   *
+   * Exemplo:
+   * ?barber=ID_DO_BARBEIRO#contato
+   */
+  const searchParams =
+    useSearchParams();
 
-  const [loadingTimes, setLoadingTimes] =
-    useState(false);
+  const [
+    loading,
+    setLoading,
+  ] = useState(false);
+
+  const [
+    loadingTimes,
+    setLoadingTimes,
+  ] = useState(false);
 
   const [
     selectedBarberId,
@@ -78,19 +97,65 @@ export default function Contact({
     setAvailabilityMessage,
   ] = useState("");
 
-  const [status, setStatus] =
-    useState<null | {
-      ok: boolean;
-      msg: string;
-    }>(null);
+  const [
+    status,
+    setStatus,
+  ] = useState<null | {
+    ok: boolean;
+    msg: string;
+  }>(null);
 
-  const today = getBrazilToday();
+  const today =
+    getBrazilToday();
 
   const selectedService =
     services.find(
       (service) =>
-        service.id === selectedServiceId,
+        service.id ===
+        selectedServiceId,
     ) ?? null;
+
+  /*
+   * BARBEIRO VINDO DO BOTÃO "AGENDAR"
+   *
+   * Quando a URL tiver:
+   *
+   * ?barber=UUID#contato
+   *
+   * verificamos se o profissional
+   * realmente existe na lista atual
+   * e já deixamos ele selecionado.
+   */
+  useEffect(() => {
+    const barberId =
+      searchParams.get("barber");
+
+    if (!barberId) {
+      return;
+    }
+
+    const barberExists =
+      barbers.some(
+        (barber) =>
+          barber.id === barberId,
+      );
+
+    if (!barberExists) {
+      return;
+    }
+
+    setSelectedBarberId(
+      barberId,
+    );
+
+    setSelectedTime("");
+    setAvailableTimes([]);
+    setAvailabilityMessage("");
+    setStatus(null);
+  }, [
+    searchParams,
+    barbers,
+  ]);
 
   /*
    * Carrega os horários sempre que:
@@ -98,10 +163,6 @@ export default function Contact({
    * - barbeiro muda;
    * - serviço muda;
    * - data muda.
-   *
-   * A duração do serviço é usada para
-   * verificar se ele cabe antes do próximo
-   * atendimento, intervalo ou fechamento.
    */
   useEffect(() => {
     let cancelled = false;
@@ -115,6 +176,7 @@ export default function Contact({
         setAvailableTimes([]);
         setSelectedTime("");
         setAvailabilityMessage("");
+
         return;
       }
 
@@ -193,8 +255,11 @@ export default function Contact({
   ) {
     event.preventDefault();
 
-    const form = event.currentTarget;
-    const formData = new FormData(form);
+    const form =
+      event.currentTarget;
+
+    const formData =
+      new FormData(form);
 
     const name = String(
       formData.get("name") ?? "",
@@ -263,9 +328,8 @@ export default function Contact({
     }
 
     /*
-     * Segurança adicional no frontend:
-     * só envia um horário que continua
-     * presente na disponibilidade atual.
+     * Só envia um horário que
+     * continua disponível.
      */
     if (
       !availableTimes.includes(
@@ -287,10 +351,15 @@ export default function Contact({
     setLoading(true);
     setStatus(null);
 
-    const { error } =
+    const {
+      error,
+    } =
       await createAppointment({
-        businessId: business.id,
-        barberId: selectedBarberId,
+        businessId:
+          business.id,
+
+        barberId:
+          selectedBarberId,
 
         serviceId:
           selectedService.id,
@@ -318,16 +387,9 @@ export default function Contact({
         error,
       );
 
-      /*
-       * Conflito de horário.
-       *
-       * Recarregamos toda a disponibilidade
-       * em vez de apenas remover manualmente
-       * o horário selecionado, porque um
-       * atendimento mais longo pode bloquear
-       * mais de um slot.
-       */
-      if (error.code === "23505") {
+      if (
+        error.code === "23505"
+      ) {
         setSelectedTime("");
 
         await refreshAvailableTimes();
@@ -375,6 +437,7 @@ export default function Contact({
     >
       <div className="section-shell">
         <div className="grid grid-cols-1 gap-10 lg:grid-cols-2 lg:gap-16">
+          {/* INFORMAÇÕES */}
           <div>
             <SectionHeading
               eyebrow="Agendamento"
@@ -383,6 +446,7 @@ export default function Contact({
             />
 
             <ul className="mt-8 space-y-6">
+              {/* ENDEREÇO */}
               <li className="flex items-start gap-4">
                 <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full border border-gold/40 text-gold">
                   <MapPin className="h-5 w-5" />
@@ -400,6 +464,7 @@ export default function Contact({
                 </div>
               </li>
 
+              {/* CONTATO */}
               <li className="flex items-start gap-4">
                 <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full border border-gold/40 text-gold">
                   <Phone className="h-5 w-5" />
@@ -423,6 +488,7 @@ export default function Contact({
                 </div>
               </li>
 
+              {/* ATENDIMENTO */}
               <li className="flex items-start gap-4">
                 <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full border border-gold/40 text-gold">
                   <Clock className="h-5 w-5" />
@@ -444,6 +510,7 @@ export default function Contact({
             </ul>
           </div>
 
+          {/* FORMULÁRIO */}
           <form
             className="card-premium space-y-5 p-6 sm:p-8"
             onSubmit={onSubmit}
@@ -500,9 +567,13 @@ export default function Contact({
                 id="barberId"
                 name="barberId"
                 required
-                value={selectedBarberId}
+                value={
+                  selectedBarberId
+                }
                 disabled={loading}
-                onChange={(event) => {
+                onChange={(
+                  event,
+                ) => {
                   setSelectedBarberId(
                     event.target.value,
                   );
@@ -513,7 +584,10 @@ export default function Contact({
                 }}
                 className={inputClass}
               >
-                <option value="" disabled>
+                <option
+                  value=""
+                  disabled
+                >
                   Selecione um barbeiro
                 </option>
 
@@ -543,9 +617,13 @@ export default function Contact({
                 id="serviceId"
                 name="serviceId"
                 required
-                value={selectedServiceId}
+                value={
+                  selectedServiceId
+                }
                 disabled={loading}
-                onChange={(event) => {
+                onChange={(
+                  event,
+                ) => {
                   setSelectedServiceId(
                     event.target.value,
                   );
@@ -556,7 +634,10 @@ export default function Contact({
                 }}
                 className={inputClass}
               >
-                <option value="" disabled>
+                <option
+                  value=""
+                  disabled
+                >
                   Selecione um serviço
                 </option>
 
@@ -591,6 +672,7 @@ export default function Contact({
 
             {/* DATA + HORÁRIO */}
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              {/* DATA */}
               <div>
                 <label
                   htmlFor="appointmentDate"
@@ -605,9 +687,13 @@ export default function Contact({
                   type="date"
                   required
                   min={today}
-                  value={selectedDate}
+                  value={
+                    selectedDate
+                  }
                   disabled={loading}
-                  onChange={(event) => {
+                  onChange={(
+                    event,
+                  ) => {
                     setSelectedDate(
                       event.target.value,
                     );
@@ -620,6 +706,7 @@ export default function Contact({
                 />
               </div>
 
+              {/* HORÁRIO */}
               <div>
                 <label
                   htmlFor="startTime"
@@ -632,8 +719,12 @@ export default function Contact({
                   id="startTime"
                   name="startTime"
                   required
-                  value={selectedTime}
-                  onChange={(event) =>
+                  value={
+                    selectedTime
+                  }
+                  onChange={(
+                    event,
+                  ) =>
                     setSelectedTime(
                       event.target.value,
                     )
@@ -679,7 +770,7 @@ export default function Contact({
               </div>
             </div>
 
-            {/* INFORMAÇÃO DA DISPONIBILIDADE */}
+            {/* CARREGANDO HORÁRIOS */}
             {loadingTimes && (
               <p className="flex items-center gap-2 text-xs text-muted-foreground">
                 <Loader2 className="h-4 w-4 animate-spin text-gold" />
@@ -688,6 +779,7 @@ export default function Contact({
               </p>
             )}
 
+            {/* QUANTIDADE */}
             {!loadingTimes &&
               canChooseTime &&
               availableTimes.length >
@@ -702,11 +794,14 @@ export default function Contact({
                 </p>
               )}
 
+            {/* ERRO DE DISPONIBILIDADE */}
             {!loadingTimes &&
               canChooseTime &&
               availabilityMessage && (
                 <p className="text-sm text-destructive">
-                  {availabilityMessage}
+                  {
+                    availabilityMessage
+                  }
                 </p>
               )}
 
@@ -739,8 +834,10 @@ export default function Contact({
                 !selectedServiceId ||
                 !selectedDate ||
                 !selectedTime ||
-                barbers.length === 0 ||
-                services.length === 0
+                barbers.length ===
+                  0 ||
+                services.length ===
+                  0
               }
               className="btn-gold w-full disabled:cursor-not-allowed disabled:opacity-60"
             >

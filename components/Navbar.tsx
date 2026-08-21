@@ -2,12 +2,15 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+
 import {
   LogIn,
   Menu,
   Scissors,
   X,
 } from "lucide-react";
+
+import { createClient } from "@/lib/supabase/client";
 
 const links = [
   { label: "Serviços", href: "#servicos" },
@@ -17,9 +20,17 @@ const links = [
   { label: "Contato", href: "#contato" },
 ];
 
+type PublicBusiness = {
+  name: string;
+  logo_url: string | null;
+};
+
 export default function Navbar() {
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+
+  const [business, setBusiness] =
+    useState<PublicBusiness | null>(null);
 
   useEffect(() => {
     const onScroll = () => {
@@ -47,6 +58,58 @@ export default function Navbar() {
     };
   }, [open]);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadBusiness() {
+      const supabase = createClient();
+
+      const {
+        data,
+        error,
+      } = await supabase
+        .from("businesses")
+        .select(`
+          name,
+          logo_url
+        `)
+        .eq("active", true)
+        .limit(1)
+        .maybeSingle();
+
+      if (cancelled) {
+        return;
+      }
+
+      if (error) {
+        console.error(
+          "Erro ao carregar identidade da barbearia:",
+          error,
+        );
+
+        return;
+      }
+
+      if (data) {
+        setBusiness(
+          data as PublicBusiness,
+        );
+      }
+    }
+
+    loadBusiness();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const businessName =
+    business?.name || "Navalha Real";
+
+  const logoUrl =
+    business?.logo_url || null;
+
   return (
     <header
       className={`fixed inset-x-0 top-0 z-50 transition-colors duration-300 ${
@@ -58,19 +121,28 @@ export default function Navbar() {
       <nav className="section-shell grid h-16 grid-cols-[minmax(0,1fr)_auto] items-center gap-4 sm:h-20 lg:flex lg:justify-between">
         <Link
           href="#top"
-          className="flex min-w-0 items-center gap-2"
+          className="flex min-w-0 items-center gap-3"
         >
-          <Scissors
-            className="h-5 w-5 shrink-0 text-gold"
-            strokeWidth={1.75}
-            aria-hidden
-          />
+          {logoUrl ? (
+            <div className="h-10 w-10 shrink-0 overflow-hidden rounded-xl border border-gold/30 bg-secondary sm:h-11 sm:w-11">
+              <img
+                src={logoUrl}
+                alt={`Logo ${businessName}`}
+                className="h-full w-full object-cover"
+              />
+            </div>
+          ) : (
+            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-gold/30 bg-gold/10 text-gold sm:h-11 sm:w-11">
+              <Scissors
+                className="h-5 w-5"
+                strokeWidth={1.75}
+                aria-hidden
+              />
+            </span>
+          )}
 
           <span className="truncate font-display text-lg tracking-wide sm:text-xl">
-            Navalha
-            <span className="text-gold">
-              &nbsp;Real
-            </span>
+            {businessName}
           </span>
         </Link>
 
@@ -106,7 +178,9 @@ export default function Navbar() {
           <button
             type="button"
             onClick={() =>
-              setOpen((current) => !current)
+              setOpen(
+                (current) => !current,
+              )
             }
             aria-label={
               open

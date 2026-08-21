@@ -10,6 +10,7 @@ type Business = {
   id: string;
   name: string;
   primary_color: string | null;
+  logo_url: string | null;
 };
 
 async function DashboardLayoutContent({
@@ -44,12 +45,18 @@ async function DashboardLayoutContent({
     .select(`
       id,
       name,
-      primary_color
+      primary_color,
+      logo_url
     `)
     .eq("id", access.businessId)
     .maybeSingle();
 
   if (businessError || !business) {
+    console.error(
+      "Erro ao carregar dados da barbearia:",
+      businessError,
+    );
+
     redirect("/acesso");
   }
 
@@ -71,7 +78,12 @@ async function DashboardLayoutContent({
       }
     >
       <DashboardSidebar
-        businessName={currentBusiness.name}
+        businessName={
+          currentBusiness.name
+        }
+        logoUrl={
+          currentBusiness.logo_url
+        }
         role={access.role}
       />
 
@@ -90,6 +102,7 @@ function DashboardLayoutLoading() {
       <div className="min-h-screen lg:pl-72">
         <div className="animate-pulse p-6">
           <div className="h-8 w-60 rounded bg-surface-2" />
+
           <div className="mt-4 h-5 w-96 max-w-full rounded bg-surface-2" />
         </div>
       </div>

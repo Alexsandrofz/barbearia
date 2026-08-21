@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import { Geist } from "next/font/google";
 import { ThemeProvider } from "next-themes";
+
+import BusinessThemeProvider from "@/components/BusinessThemeProvider";
+
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -21,7 +24,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="pt-BR" suppressHydrationWarning>
+    <html
+      lang="pt-BR"
+      suppressHydrationWarning
+      data-scroll-behavior="smooth"
+    >
       <body className={`${geistSans.className} antialiased`}>
         <ThemeProvider
           attribute="class"
@@ -29,6 +36,8 @@ export default function RootLayout({
           enableSystem={false}
           disableTransitionOnChange
         >
+          <BusinessThemeProvider />
+
           {children}
         </ThemeProvider>
       </body>

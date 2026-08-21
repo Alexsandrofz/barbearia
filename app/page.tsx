@@ -10,13 +10,14 @@ import Contact from "@/components/Contact";
 import Footer from "@/components/Footer";
 
 import {
+  getActiveBusiness,
   getBarbers,
-  getBusinessBySlug,
   getServices,
 } from "@/lib/data";
 
 async function BusinessContent() {
-  const business = await getBusinessBySlug("navalha-real");
+  const business =
+    await getActiveBusiness();
 
   if (!business) {
     return (
@@ -32,15 +33,21 @@ async function BusinessContent() {
     );
   }
 
-  const [services, barbers] = await Promise.all([
-    getServices(business.id),
-    getBarbers(business.id),
-  ]);
+  const [services, barbers] =
+    await Promise.all([
+      getServices(business.id),
+      getBarbers(business.id),
+    ]);
 
   return (
     <>
-      <Services services={services} />
-      <Barbers barbers={barbers} />
+      <Services
+        services={services}
+      />
+
+      <Barbers
+        barbers={barbers}
+      />
 
       <Contact
         business={business}
@@ -56,15 +63,20 @@ function BusinessLoading() {
     <section className="section-shell py-20 sm:py-24 lg:py-32">
       <div className="animate-pulse">
         <div className="h-4 w-24 rounded bg-surface-2" />
+
         <div className="mt-4 h-10 max-w-xl rounded bg-surface-2" />
 
         <div className="mt-10 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {Array.from({ length: 3 }).map((_, index) => (
-            <div
-              key={index}
-              className="h-64 rounded-2xl border border-border bg-surface"
-            />
-          ))}
+          {Array.from({
+            length: 3,
+          }).map(
+            (_, index) => (
+              <div
+                key={index}
+                className="h-64 rounded-2xl border border-border bg-surface"
+              />
+            ),
+          )}
         </div>
       </div>
     </section>
@@ -79,11 +91,16 @@ export default function HomePage() {
       <main>
         <Hero />
 
-        <Suspense fallback={<BusinessLoading />}>
+        <Suspense
+          fallback={
+            <BusinessLoading />
+          }
+        >
           <BusinessContent />
         </Suspense>
 
         <Gallery />
+
         <Testimonials />
       </main>
 

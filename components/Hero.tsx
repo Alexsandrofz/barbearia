@@ -27,22 +27,27 @@ export default function Hero() {
       />
 
       <div className="section-shell relative flex min-h-[100svh] flex-col justify-center py-28 sm:py-32">
-        <span className="eyebrow animate-fade-in">Barbearia premium desde 2011</span>
+        <span className="eyebrow animate-fade-in">
+          Barbearia premium desde 2011
+        </span>
 
         <h1 className="animate-fade-in mt-4 max-w-3xl font-display text-4xl leading-tight sm:text-5xl md:text-6xl xl:text-7xl">
-          Estilo afiado, <span className="text-gold-gradient">precisão artesanal</span>
+          Estilo afiado,{" "}
+          <span className="text-gold-gradient">precisão artesanal</span>
         </h1>
 
         <p className="animate-fade-in mt-5 max-w-xl text-base leading-relaxed text-muted-foreground sm:text-lg">
-          Cortes clássicos e modernos, barba desenhada na navalha e um atendimento pensado
-          nos detalhes. Reserve seu horário em menos de um minuto.
+          Cortes clássicos e modernos, barba desenhada na navalha e um
+          atendimento pensado nos detalhes. Reserve seu horário em menos de um
+          minuto.
         </p>
 
         <div className="animate-fade-in mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
-          <Link href="#contato" className="btn-gold w-full sm:w-auto">
+          <a href="#contato" className="btn-gold w-full sm:w-auto">
             <CalendarCheck className="h-5 w-5" />
             Agendar horário
-          </Link>
+          </a>
+
           <Link href="#servicos" className="btn-outline-gold w-full sm:w-auto">
             Ver serviços
           </Link>

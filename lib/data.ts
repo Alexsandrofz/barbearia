@@ -9,6 +9,9 @@ export type Business = {
   address: string | null;
   logo_url: string | null;
   primary_color: string | null;
+  whatsapp: string | null;
+  instagram: string | null;
+  description: string | null;
 };
 
 export type Barber = {
@@ -26,6 +29,40 @@ export type Service = {
   duration_minutes: number;
 };
 
+export async function getActiveBusiness(): Promise<Business | null> {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("businesses")
+    .select(`
+      id,
+      name,
+      slug,
+      phone,
+      email,
+      address,
+      logo_url,
+      primary_color,
+      whatsapp,
+      instagram,
+      description
+    `)
+    .eq("active", true)
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    console.error(
+      "Erro ao buscar barbearia ativa:",
+      error.message,
+    );
+
+    return null;
+  }
+
+  return data;
+}
+
 export async function getBusinessBySlug(
   slug: string,
 ): Promise<Business | null> {
@@ -33,15 +70,29 @@ export async function getBusinessBySlug(
 
   const { data, error } = await supabase
     .from("businesses")
-    .select(
-      "id, name, slug, phone, email, address, logo_url, primary_color",
-    )
+    .select(`
+      id,
+      name,
+      slug,
+      phone,
+      email,
+      address,
+      logo_url,
+      primary_color,
+      whatsapp,
+      instagram,
+      description
+    `)
     .eq("slug", slug)
     .eq("active", true)
-    .single();
+    .maybeSingle();
 
   if (error) {
-    console.error("Erro ao buscar barbearia:", error.message);
+    console.error(
+      "Erro ao buscar barbearia:",
+      error.message,
+    );
+
     return null;
   }
 
@@ -55,13 +106,22 @@ export async function getBarbers(
 
   const { data, error } = await supabase
     .from("barbers")
-    .select("id, name, specialty, photo_url")
+    .select(`
+      id,
+      name,
+      specialty,
+      photo_url
+    `)
     .eq("business_id", businessId)
     .eq("active", true)
     .order("name");
 
   if (error) {
-    console.error("Erro ao buscar barbeiros:", error.message);
+    console.error(
+      "Erro ao buscar barbeiros:",
+      error.message,
+    );
+
     return [];
   }
 
@@ -75,13 +135,23 @@ export async function getServices(
 
   const { data, error } = await supabase
     .from("services")
-    .select("id, name, description, price, duration_minutes")
+    .select(`
+      id,
+      name,
+      description,
+      price,
+      duration_minutes
+    `)
     .eq("business_id", businessId)
     .eq("active", true)
     .order("name");
 
   if (error) {
-    console.error("Erro ao buscar serviços:", error.message);
+    console.error(
+      "Erro ao buscar serviços:",
+      error.message,
+    );
+
     return [];
   }
 
