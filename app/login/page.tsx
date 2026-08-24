@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ArrowLeft,
   Eye,
@@ -9,6 +9,7 @@ import {
   Loader2,
   LockKeyhole,
   Mail,
+  Scissors,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 
@@ -20,6 +21,11 @@ type UserRole =
   | "barber"
   | "customer";
 
+type PublicBusiness = {
+  name: string;
+  logo_url: string | null;
+};
+
 export default function LoginPage() {
   const router = useRouter();
 
@@ -29,12 +35,69 @@ export default function LoginPage() {
 
   const [showPassword, setShowPassword] = useState(false);
 
+  const [business, setBusiness] =
+    useState<PublicBusiness | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadBusiness() {
+      try {
+        const supabase = createClient();
+
+        const {
+          data,
+          error,
+        } = await supabase
+          .from("businesses")
+          .select(`
+            name,
+            logo_url
+          `)
+          .eq("active", true)
+          .limit(1)
+          .maybeSingle();
+
+        if (cancelled) {
+          return;
+        }
+
+        if (error) {
+          console.error(
+            "Erro ao carregar identidade da barbearia:",
+            error,
+          );
+
+          return;
+        }
+
+        if (data) {
+          setBusiness(
+            data as PublicBusiness,
+          );
+        }
+      } catch (error) {
+        console.error(
+          "Erro ao carregar identidade da barbearia:",
+          error,
+        );
+      }
+    }
+
+    loadBusiness();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   async function handleSubmit(
     event: React.FormEvent<HTMLFormElement>,
   ) {
     event.preventDefault();
 
-    const formData = new FormData(event.currentTarget);
+    const formData =
+      new FormData(event.currentTarget);
 
     const email = String(
       formData.get("email") ?? "",
@@ -55,12 +118,16 @@ export default function LoginPage() {
     const {
       data: authData,
       error: authError,
-    } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    } =
+      await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
 
-    if (authError || !authData.user) {
+    if (
+      authError ||
+      !authData.user
+    ) {
       setLoading(false);
 
       setErrorMessage(
@@ -153,6 +220,14 @@ export default function LoginPage() {
     );
   }
 
+  const businessName =
+    business?.name ||
+    "Sua barbearia";
+
+  const logoUrl =
+    business?.logo_url ||
+    null;
+
   return (
     <main className="flex min-h-screen items-center justify-center bg-background px-5 py-12 text-foreground">
       <section className="w-full max-w-md">
@@ -165,13 +240,30 @@ export default function LoginPage() {
           Voltar para o site
         </Link>
 
+        {/* IDENTIDADE */}
         <div className="mb-8 text-center">
+          <div className="mx-auto mb-5 flex justify-center">
+            {logoUrl ? (
+              <div className="h-20 w-20 overflow-hidden rounded-2xl border border-gold/30 bg-secondary shadow-lg">
+                <img
+                  src={logoUrl}
+                  alt={`Logo ${businessName}`}
+                  className="h-full w-full object-cover"
+                />
+              </div>
+            ) : (
+              <div className="grid h-20 w-20 place-items-center rounded-2xl border border-gold/30 bg-gold/10 text-gold">
+                <Scissors className="h-8 w-8" />
+              </div>
+            )}
+          </div>
+
           <p className="eyebrow">
             Área administrativa
           </p>
 
           <h1 className="mt-3 font-display text-3xl sm:text-4xl">
-            Acesse sua barbearia
+            {businessName}
           </h1>
 
           <p className="mt-3 text-sm text-muted-foreground">
@@ -236,7 +328,6 @@ export default function LoginPage() {
                 className="h-12 w-full rounded-lg border border-input bg-background pl-12 pr-14 outline-none transition-colors focus:border-gold disabled:cursor-not-allowed disabled:opacity-60"
               />
 
-              {/* OLHO */}
               <button
                 type="button"
                 disabled={loading}
