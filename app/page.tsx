@@ -54,6 +54,14 @@ async function BusinessContent() {
         barbers={barbers}
         services={services}
       />
+
+      <Gallery />
+
+      <Testimonials />
+
+      <Footer
+        business={business}
+      />
     </>
   );
 }
@@ -98,13 +106,7 @@ export default function HomePage() {
         >
           <BusinessContent />
         </Suspense>
-
-        <Gallery />
-
-        <Testimonials />
       </main>
-
-      <Footer />
     </div>
   );
 }

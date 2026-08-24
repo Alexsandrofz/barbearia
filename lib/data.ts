@@ -5,13 +5,13 @@ export type Business = {
   name: string;
   slug: string;
   phone: string | null;
+  whatsapp: string | null;
   email: string | null;
   address: string | null;
-  logo_url: string | null;
-  primary_color: string | null;
-  whatsapp: string | null;
   instagram: string | null;
   description: string | null;
+  logo_url: string | null;
+  primary_color: string | null;
 };
 
 export type Barber = {
@@ -39,13 +39,13 @@ export async function getActiveBusiness(): Promise<Business | null> {
       name,
       slug,
       phone,
+      whatsapp,
       email,
       address,
-      logo_url,
-      primary_color,
-      whatsapp,
       instagram,
-      description
+      description,
+      logo_url,
+      primary_color
     `)
     .eq("active", true)
     .limit(1)
@@ -60,7 +60,7 @@ export async function getActiveBusiness(): Promise<Business | null> {
     return null;
   }
 
-  return data;
+  return data as Business | null;
 }
 
 export async function getBusinessBySlug(
@@ -75,13 +75,13 @@ export async function getBusinessBySlug(
       name,
       slug,
       phone,
+      whatsapp,
       email,
       address,
-      logo_url,
-      primary_color,
-      whatsapp,
       instagram,
-      description
+      description,
+      logo_url,
+      primary_color
     `)
     .eq("slug", slug)
     .eq("active", true)
@@ -96,7 +96,7 @@ export async function getBusinessBySlug(
     return null;
   }
 
-  return data;
+  return data as Business | null;
 }
 
 export async function getBarbers(
@@ -125,7 +125,7 @@ export async function getBarbers(
     return [];
   }
 
-  return data ?? [];
+  return (data ?? []) as Barber[];
 }
 
 export async function getServices(
@@ -155,5 +155,5 @@ export async function getServices(
     return [];
   }
 
-  return data ?? [];
+  return (data ?? []) as Service[];
 }

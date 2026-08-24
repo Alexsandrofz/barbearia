@@ -1,5 +1,9 @@
 import Link from "next/link";
-import { Facebook, Instagram, Scissors } from "lucide-react";
+import {
+  Instagram,
+  Scissors,
+} from "lucide-react";
+import type { Business } from "@/lib/data";
 
 const nav = [
   { label: "Serviços", href: "#servicos" },
@@ -9,65 +13,154 @@ const nav = [
   { label: "Contato", href: "#contato" },
 ];
 
-const socials = [
-  { Icon: Instagram, label: "Instagram", href: "#top" },
-  { Icon: Facebook, label: "Facebook", href: "#top" },
-];
+type Props = {
+  business: Business;
+};
 
-export default function Footer() {
+function normalizeInstagram(
+  value: string | null | undefined,
+) {
+  if (!value) {
+    return null;
+  }
+
+  const trimmed = value.trim();
+
+  if (!trimmed) {
+    return null;
+  }
+
+  if (
+    trimmed.startsWith("http://") ||
+    trimmed.startsWith("https://")
+  ) {
+    return trimmed;
+  }
+
+  const username =
+    trimmed.startsWith("@")
+      ? trimmed.slice(1)
+      : trimmed;
+
+  return `https://instagram.com/${username}`;
+}
+
+export default function Footer({
+  business,
+}: Props) {
+  const instagramUrl =
+    normalizeInstagram(
+      business.instagram,
+    );
+
+  const currentYear =
+    new Date().getFullYear();
+
   return (
     <footer className="border-t border-border/60 bg-surface">
       <div className="section-shell py-12 sm:py-16">
         <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4">
+          {/* MARCA */}
           <div className="sm:col-span-2">
-            <div className="flex min-w-0 items-center gap-2">
-              <Scissors className="h-5 w-5 shrink-0 text-gold" strokeWidth={1.75} aria-hidden />
+            <div className="flex min-w-0 items-center gap-3">
+              {business.logo_url ? (
+                <div className="h-11 w-11 shrink-0 overflow-hidden rounded-xl border border-gold/30 bg-secondary">
+                  <img
+                    src={business.logo_url}
+                    alt={`Logo ${business.name}`}
+                    className="h-full w-full object-cover"
+                  />
+                </div>
+              ) : (
+                <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-gold/30 bg-gold/10 text-gold">
+                  <Scissors
+                    className="h-5 w-5"
+                    strokeWidth={1.75}
+                    aria-hidden
+                  />
+                </span>
+              )}
+
               <span className="truncate font-display text-lg">
-                Navalha<span className="text-gold">&nbsp;Real</span>
+                {business.name}
               </span>
             </div>
+
             <p className="mt-4 max-w-sm text-sm leading-relaxed text-muted-foreground">
-              Barbearia premium no centro de São Paulo. Tradição, técnica e um ambiente
-              feito para você relaxar.
+              {business.description ||
+                "Cuidado, estilo e atendimento profissional em cada detalhe."}
             </p>
+
+            {business.address && (
+              <p className="mt-3 max-w-sm text-sm text-muted-foreground">
+                {business.address}
+              </p>
+            )}
           </div>
 
+          {/* NAVEGAÇÃO */}
           <nav aria-label="Navegação do rodapé">
-            <p className="text-xs uppercase tracking-widest text-gold">Navegação</p>
+            <p className="text-xs uppercase tracking-widest text-gold">
+              Navegação
+            </p>
+
             <ul className="mt-4 space-y-3">
-              {nav.map((n) => (
-                <li key={n.href}>
+              {nav.map((item) => (
+                <li key={item.href}>
                   <Link
-                    href={n.href}
+                    href={item.href}
                     className="text-sm text-muted-foreground transition-colors hover:text-gold"
                   >
-                    {n.label}
+                    {item.label}
                   </Link>
                 </li>
               ))}
             </ul>
           </nav>
 
+          {/* REDES / CONTATO */}
           <div>
-            <p className="text-xs uppercase tracking-widest text-gold">Siga a gente</p>
-            <div className="mt-4 flex gap-3">
-              {socials.map(({ Icon, label, href }) => (
+            <p className="text-xs uppercase tracking-widest text-gold">
+              Contato
+            </p>
+
+            <div className="mt-4 space-y-3">
+              {business.phone && (
+                <p className="text-sm text-muted-foreground">
+                  {business.phone}
+                </p>
+              )}
+
+              {business.email && (
                 <a
-                  key={label}
-                  href={href}
-                  aria-label={label}
+                  href={`mailto:${business.email}`}
+                  className="block text-sm text-muted-foreground transition-colors hover:text-gold"
+                >
+                  {business.email}
+                </a>
+              )}
+            </div>
+
+            {instagramUrl && (
+              <div className="mt-5 flex gap-3">
+                <a
+                  href={instagramUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  aria-label="Instagram"
                   className="grid h-12 w-12 place-items-center rounded-full border border-border text-muted-foreground transition-colors hover:border-gold hover:text-gold"
                 >
-                  <Icon className="h-5 w-5" />
+                  <Instagram className="h-5 w-5" />
                 </a>
-              ))}
-            </div>
+              </div>
+            )}
           </div>
         </div>
 
         <div className="gold-rule mt-10" />
+
         <p className="mt-6 text-xs text-muted-foreground">
-          © 2026 Navalha Real. Todos os direitos reservados.
+          © {currentYear} {business.name}. Todos os direitos reservados.
         </p>
       </div>
     </footer>
