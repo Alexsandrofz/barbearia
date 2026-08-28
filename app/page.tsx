@@ -100,9 +100,7 @@ export default function HomePage() {
         <Hero />
 
         <Suspense
-          fallback={
-            <BusinessLoading />
-          }
+          fallback={<BusinessLoading />}
         >
           <BusinessContent />
         </Suspense>

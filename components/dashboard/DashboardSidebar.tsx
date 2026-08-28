@@ -11,6 +11,7 @@ import {
   Menu,
   Scissors,
   Settings,
+  Star,
   Store,
   UsersRound,
   UserRound,
@@ -19,12 +20,7 @@ import {
 
 import { createClient } from "@/lib/supabase/client";
 
-type UserRole =
-  | "owner"
-  | "manager"
-  | "barber"
-  | "customer"
-  | "unauthorized";
+type UserRole = "owner" | "manager" | "barber" | "customer" | "unauthorized";
 
 type NavigationItem = {
   label: string;
@@ -48,6 +44,12 @@ const navigation: NavigationItem[] = [
     label: "Clientes",
     href: "/dashboard/clientes",
     icon: UsersRound,
+    roles: ["owner", "manager"],
+  },
+  {
+    label: "Avaliações",
+    href: "/dashboard/avaliacoes",
+    icon: Star,
     roles: ["owner", "manager"],
   },
   {
@@ -118,8 +120,7 @@ export default function DashboardSidebar({
 
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  const [isLoggingOut, startLogoutTransition] =
-    useTransition();
+  const [isLoggingOut, startLogoutTransition] = useTransition();
 
   function closeMobileMenu() {
     setMobileOpen(false);
@@ -129,16 +130,12 @@ export default function DashboardSidebar({
     startLogoutTransition(async () => {
       const supabase = createClient();
 
-      const { error } =
-        await supabase.auth.signOut({
-          scope: "local",
-        });
+      const { error } = await supabase.auth.signOut({
+        scope: "local",
+      });
 
       if (error) {
-        console.error(
-          "Erro ao sair:",
-          error,
-        );
+        console.error("Erro ao sair:", error);
 
         return;
       }
@@ -148,36 +145,22 @@ export default function DashboardSidebar({
     });
   }
 
-  const visibleNavigation =
-    navigation.filter((item) =>
-      item.roles.includes(role),
-    );
+  const visibleNavigation = navigation.filter((item) =>
+    item.roles.includes(role),
+  );
 
-  const homeHref =
-    role === "barber"
-      ? "/dashboard/barbeiro"
-      : "/dashboard";
+  const homeHref = role === "barber" ? "/dashboard/barbeiro" : "/dashboard";
 
-  function isItemActive(
-    item: NavigationItem,
-  ) {
+  function isItemActive(item: NavigationItem) {
     if (item.exact) {
       return pathname === item.href;
     }
 
-    return pathname.startsWith(
-      item.href,
-    );
+    return pathname.startsWith(item.href);
   }
 
-  function BrandLogo({
-    mobile = false,
-  }: {
-    mobile?: boolean;
-  }) {
-    const sizeClass = mobile
-      ? "h-9 w-9 rounded-lg"
-      : "h-10 w-10 rounded-xl";
+  function BrandLogo({ mobile = false }: { mobile?: boolean }) {
+    const sizeClass = mobile ? "h-9 w-9 rounded-lg" : "h-10 w-10 rounded-xl";
 
     if (logoUrl) {
       return (
@@ -197,13 +180,7 @@ export default function DashboardSidebar({
       <span
         className={`grid ${sizeClass} shrink-0 place-items-center border border-gold/30 bg-gold/10 text-gold`}
       >
-        <Store
-          className={
-            mobile
-              ? "h-4 w-4"
-              : "h-5 w-5"
-          }
-        />
+        <Store className={mobile ? "h-4 w-4" : "h-5 w-5"} />
       </span>
     );
   }
@@ -221,9 +198,7 @@ export default function DashboardSidebar({
 
           <span className="min-w-0">
             <span className="block text-xs uppercase tracking-[0.18em] text-muted-foreground">
-              {role === "barber"
-                ? "Área do profissional"
-                : "Painel"}
+              {role === "barber" ? "Área do profissional" : "Painel"}
             </span>
 
             <span className="block truncate font-display text-lg">
@@ -252,41 +227,33 @@ export default function DashboardSidebar({
         className="flex-1 overflow-y-auto px-3 py-6"
       >
         <p className="mb-3 px-3 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-          {role === "barber"
-            ? "Profissional"
-            : "Gerenciamento"}
+          {role === "barber" ? "Profissional" : "Gerenciamento"}
         </p>
 
         <ul className="space-y-1">
-          {visibleNavigation.map(
-            (item) => {
-              const Icon =
-                item.icon;
+          {visibleNavigation.map((item) => {
+            const Icon = item.icon;
 
-              const active =
-                isItemActive(item);
+            const active = isItemActive(item);
 
-              return (
-                <li key={item.href}>
-                  <Link
-                    href={item.href}
-                    onClick={
-                      closeMobileMenu
-                    }
-                    className={`flex min-h-12 items-center gap-3 rounded-xl px-3 text-sm font-medium transition-colors ${
-                      active
-                        ? "bg-gold/12 text-gold"
-                        : "text-muted-foreground hover:bg-secondary hover:text-foreground"
-                    }`}
-                  >
-                    <Icon className="h-5 w-5 shrink-0" />
+            return (
+              <li key={item.href}>
+                <Link
+                  href={item.href}
+                  onClick={closeMobileMenu}
+                  className={`flex min-h-12 items-center gap-3 rounded-xl px-3 text-sm font-medium transition-colors ${
+                    active
+                      ? "bg-gold/12 text-gold"
+                      : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+                  }`}
+                >
+                  <Icon className="h-5 w-5 shrink-0" />
 
-                    {item.label}
-                  </Link>
-                </li>
-              );
-            },
-          )}
+                  {item.label}
+                </Link>
+              </li>
+            );
+          })}
         </ul>
       </nav>
 
@@ -304,16 +271,12 @@ export default function DashboardSidebar({
         <button
           type="button"
           onClick={handleLogout}
-          disabled={
-            isLoggingOut
-          }
+          disabled={isLoggingOut}
           className="mt-1 flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-sm text-red-300 transition-colors hover:bg-red-500/10 disabled:cursor-not-allowed disabled:opacity-60"
         >
           <LogOut className="h-5 w-5" />
 
-          {isLoggingOut
-            ? "Saindo..."
-            : "Sair"}
+          {isLoggingOut ? "Saindo..." : "Sair"}
         </button>
       </div>
     </>
@@ -326,20 +289,14 @@ export default function DashboardSidebar({
         <div className="flex min-w-0 items-center gap-3">
           <BrandLogo mobile />
 
-          <span className="truncate font-display">
-            {businessName}
-          </span>
+          <span className="truncate font-display">{businessName}</span>
         </div>
 
         <button
           type="button"
-          onClick={() =>
-            setMobileOpen(true)
-          }
+          onClick={() => setMobileOpen(true)}
           aria-label="Abrir menu"
-          aria-expanded={
-            mobileOpen
-          }
+          aria-expanded={mobileOpen}
           className="grid h-11 w-11 place-items-center rounded-full border border-border"
         >
           <Menu className="h-5 w-5" />
@@ -357,9 +314,7 @@ export default function DashboardSidebar({
           <button
             type="button"
             aria-label="Fechar menu"
-            onClick={
-              closeMobileMenu
-            }
+            onClick={closeMobileMenu}
             className="absolute inset-0 bg-black/70 backdrop-blur-sm"
           />
 
